@@ -1,0 +1,1365 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zranitelnost kamerové percepce</title>
+<style>
+  :root {
+    --bg: #fdf8f1;
+    --card: #ffffff;
+    --line: #e9dfd0;
+    --text: #1e2935;
+    --muted: #5b6676;
+    --accent: #f57800;
+    --accent-dk: #b85700;
+    --accent-soft: #fff0de;
+    --teal: #0b8c89;
+    --teal-dk: #08706d;
+    --teal-soft: #e2f4f3;
+    --blue: #2563c9;
+    --blue-soft: #e6eefb;
+    --ok: #1f8f45;
+    --ok-soft: #e3f4e8;
+    --bad: #d33a2c;
+    --bad-soft: #fde8e5;
+    --font: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --math: "Cambria Math", "Times New Roman", Georgia, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { height: 100%; background: #efe7dc; outline: none; color: var(--text); font-family: var(--font); overflow: hidden; }
+
+  /* pevné plátno 1600×900 škálované na okno */
+  #deck { position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px; transform-origin: center center; }
+  .slide {
+    position: absolute; inset: 0; padding: 54px 88px 62px;
+    background:
+      radial-gradient(900px 520px at 100% 0%, #ffe9d2 0%, transparent 62%),
+      radial-gradient(800px 520px at 0% 100%, #e3f3f1 0%, transparent 60%),
+      var(--bg);
+    opacity: 0; visibility: hidden; transition: opacity .2s ease;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .slide.active { opacity: 1; visibility: visible; }
+  .pg { position: absolute; right: 40px; bottom: 22px; font-size: 15px; font-weight: 800; color: #a8957c; font-variant-numeric: tabular-nums; }
+
+  /* typografie: 3 úrovně */
+  .kicker { font-size: 17px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-dk); font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
+  .ask { display: inline-flex; align-items: center; gap: 8px; letter-spacing: .02em; text-transform: none; background: var(--teal); color: #fff; padding: 5px 14px 5px 10px; border-radius: 30px; font-size: 16px; }
+  .ask svg { width: 18px; height: 18px; }
+  h1 { font-size: 60px; line-height: 1.08; font-weight: 800; letter-spacing: -.01em; }
+  h2 { font-size: 44px; line-height: 1.12; font-weight: 800; letter-spacing: -.01em; margin-bottom: 26px; max-width: 1400px; }
+  h1 em, h2 em { font-style: normal; color: var(--accent); }
+  h3 { font-size: 24px; line-height: 1.25; margin-bottom: 6px; }
+  p, li { font-size: 22px; line-height: 1.42; }
+  .muted { color: var(--muted); }
+  .small { font-size: 19px; }
+  .xs { font-size: 16px; }
+  .cite { font-size: 15px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  .m { font-family: var(--math); }
+
+  .grow { flex: 1; min-height: 0; }
+  .row { display: flex; gap: 28px; }
+  .col { flex: 1; min-width: 0; }
+  .center { align-items: center; }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .vc { display: flex; flex-direction: column; justify-content: center; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 26px; box-shadow: 0 6px 22px #a0846014; }
+  .pill { display: inline-block; font-size: 15px; font-weight: 800; padding: 4px 12px; border-radius: 20px; background: var(--accent-soft); color: var(--accent-dk); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .pill.teal { background: var(--teal-soft); color: var(--teal-dk); }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.blue { background: var(--blue-soft); color: var(--blue); }
+  .tag-ill { display: inline-block; font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); background: var(--blue-soft); border-radius: 6px; padding: 3px 9px; }
+
+  /* ikony */
+  .i { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .ib { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex: none; background: var(--teal-soft); color: var(--teal-dk); }
+  .ib .i { width: 34px; height: 34px; }
+  .ib.acc { background: var(--accent-soft); color: var(--accent-dk); }
+  .ib.bad { background: var(--bad-soft); color: var(--bad); }
+  .ib.ok { background: var(--ok-soft); color: var(--ok); }
+  .ib.blue { background: var(--blue-soft); color: var(--blue); }
+  .ib.sm { width: 46px; height: 46px; border-radius: 12px; } .ib.sm .i { width: 26px; height: 26px; }
+
+  .photo { border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px #5a3d1a2a; position: relative; background: #ddd; }
+  .photo img, .photo video { display: block; width: 100%; height: auto; }
+  .photo .lbl { position: absolute; left: 12px; bottom: 12px; background: #fffffff0; color: var(--text); font-size: 15px; font-weight: 800; padding: 4px 10px; border-radius: 7px; }
+  .thumbph { height: 128px; } .thumbph img { height: 100%; object-fit: cover; }
+  .rangelbl { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; color: var(--muted); margin-top: -4px; }
+  .steps { counter-reset: st; list-style: none; }
+  .steps li { counter-increment: st; position: relative; padding-left: 46px; font-size: 19px; line-height: 1.35; margin-bottom: 10px; }
+  .steps li::before { content: counter(st); position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .caption { font-size: 15px; color: var(--muted); margin-top: 8px; }
+
+  .stat { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 20px; }
+  .stat .num { font-size: 40px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
+  .stat .lbl { font-size: 18px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+  .stat.bad .num { color: var(--bad); } .stat.ok .num { color: var(--ok); } .stat.acc .num { color: var(--accent); } .stat.teal .num { color: var(--teal); }
+
+  .statement { font-size: 32px; line-height: 1.25; font-weight: 800; }
+  .statement em { font-style: normal; color: var(--accent); }
+
+  /* tlačítka */
+  .btn { font-family: var(--font); font-size: 20px; font-weight: 700; border: 2px solid var(--accent); background: var(--accent); color: #fff; border-radius: 14px; padding: 11px 20px; cursor: pointer; min-height: 52px; transition: background .15s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn:hover { filter: brightness(1.04); }
+  .btn:focus { outline: none; }
+  .btn.ghost { background: #fff; color: var(--accent-dk); }
+  .btn.teal { background: var(--teal); border-color: var(--teal); }
+  .btn.small { font-size: 17px; padding: 7px 14px; min-height: 44px; }
+  .btn.sel { background: var(--teal); border-color: var(--teal); color: #fff; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .kbd { display: inline-block; border: 2px solid currentColor; border-radius: 6px; font-size: 13px; padding: 0 6px; line-height: 18px; opacity: .8; }
+
+  .ans { opacity: 0; visibility: hidden; transition: opacity .2s ease; }
+  .shown .ans, .ans.shown { opacity: 1; visibility: visible; }
+  .shown .pre { display: none; }
+  .swap .ans { display: none; } .swap.shown .ans { display: block; }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 50px; touch-action: none; background: transparent; cursor: pointer; }
+  input[type=range]:focus { outline: none; }
+  input[type=range]::-webkit-slider-runnable-track { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--teal-soft), #ffd7ad, var(--accent)); border: 1px solid var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 44px; height: 44px; border-radius: 50%; background: #fff; border: 5px solid var(--accent); margin-top: -17px; cursor: grab; box-shadow: 0 3px 10px #0003; }
+  input[type=range]::-moz-range-track { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--teal-soft), #ffd7ad, var(--accent)); }
+  input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 5px solid var(--accent); }
+
+  /* rámečky detekcí */
+  .imgbox { position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px #5a3d1a2a; background: #ccc; }
+  .imgbox img { display: block; width: 100%; height: auto; -webkit-user-select: none; user-select: none; }
+  .ovl { position: absolute; inset: 0; pointer-events: none; }
+  .bx { position: absolute; border: 3px solid var(--accent); border-radius: 3px; box-shadow: 0 0 0 1px #fff8; }
+  .bx span { position: absolute; left: -3px; bottom: 100%; margin-bottom: 3px; white-space: nowrap; font-size: 15px; font-weight: 800; color: #fff; background: var(--accent); padding: 2px 7px; border-radius: 5px; }
+  .bx.b-main span { bottom: auto; top: 100%; margin: 3px 0 0; }
+  .bx.b-side { border-color: var(--teal); } .bx.b-side span { background: var(--teal); }
+  .bx.b-far { border-color: var(--blue); } .bx.b-far span { background: var(--blue); left: auto; right: -3px; }
+  .bx.b-person { border-color: var(--bad); } .bx.b-person span { background: var(--bad); bottom: auto; top: 100%; margin: 3px 0 0; }
+  .bx.b-below span { bottom: auto; top: 100%; margin: 3px 0 0; }
+  .miss { position: absolute; border: 3px dashed var(--bad); border-radius: 50%; }
+  .miss span { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 4px; white-space: nowrap; font-size: 15px; font-weight: 800; color: #fff; background: var(--bad); padding: 2px 8px; border-radius: 5px; }
+
+  /* titul */
+  .title-slide { padding: 0; flex-direction: row; }
+  .title-left { flex: 1.25; padding: 80px 64px 70px 92px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+  .title-right { flex: 1; position: relative; overflow: hidden; }
+  .title-right img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 45%; }
+  .title-right::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, var(--bg) 0%, #fdf8f100 14%); }
+  .title-meta { margin-top: 36px; font-size: 24px; line-height: 1.55; }
+  .title-meta strong { font-size: 32px; }
+  .bar { width: 120px; height: 7px; background: var(--accent); border-radius: 4px; margin-top: 28px; }
+  .logo { position: absolute; left: 92px; bottom: 50px; height: 32px; mix-blend-mode: multiply; }
+  img.mult { mix-blend-mode: multiply; }
+
+  /* příběh: lišta kapitol */
+  .story { display: flex; gap: 6px; margin-top: 30px; flex-wrap: wrap; }
+  .story span { font-size: 15px; font-weight: 700; padding: 5px 11px; border-radius: 8px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+
+  /* řetězec */
+  .pipe { display: flex; align-items: stretch; }
+  .stage { flex: 1; background: #fff; border: 2px solid var(--line); border-radius: 18px; padding: 22px 14px 18px; text-align: center; position: relative; }
+  .stage .ib { margin: 0 auto 10px; }
+  .stage b { display: block; font-size: 24px; margin-bottom: 4px; }
+  .stage span { font-size: 17px; color: var(--muted); line-height: 1.35; display: block; }
+  .stage.hot { border-color: var(--accent); background: linear-gradient(180deg, #fff3e4, #fff); }
+  .arrow { width: 34px; display: flex; align-items: center; justify-content: center; color: var(--accent); flex: none; }
+  .attack-tag { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: var(--bad); color: #fff; font-size: 14px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap; letter-spacing: .05em; }
+
+  .answer-box { border-radius: 16px; padding: 16px 20px; background: var(--teal-soft); border: 2px solid var(--teal); }
+  .answer-box .big { font-size: 52px; font-weight: 800; color: var(--teal-dk); line-height: 1; }
+  .tipbtn { width: 62px; height: 62px; font-size: 27px; padding: 0; }
+
+  /* vzorce */
+  .formula { font-family: var(--math); font-size: 50px; display: flex; align-items: center; gap: 12px; }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; }
+  .frac > span:first-child { border-bottom: 3px solid var(--text); padding: 0 6px 4px; }
+  .frac > span:last-child { padding: 4px 6px 0; }
+  .sym { font-family: inherit; font-size: inherit; font-style: italic; background: var(--accent-soft); border: 2px dashed #f5a75a; border-radius: 10px; padding: 0 8px; cursor: pointer; color: var(--text); line-height: 1.15; }
+  .sym sub { font-size: .55em; font-style: normal; }
+  .sym.on { background: var(--accent); color: #fff; border-style: solid; border-color: var(--accent); }
+  table.q { border-collapse: collapse; width: 100%; }
+  table.q td { font-size: 19px; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; line-height: 1.3; }
+  table.q td:first-child { font-family: var(--math); font-style: italic; font-size: 25px; font-weight: 700; color: var(--accent-dk); white-space: nowrap; width: 76px; }
+  table.q td.v { font-weight: 800; white-space: nowrap; text-align: right; }
+  table.q tr { cursor: pointer; }
+  table.q tr.on td { background: var(--accent-soft); }
+  .symt { cursor: pointer; border-radius: 6px; padding: 0 3px; border-bottom: 2px dashed #f5a75a; }
+  .symt.on { background: var(--accent); color: #fff; border-bottom-color: var(--accent); }
+  #geoSvg [data-k], #geoSvg [data-hit] { cursor: pointer; }
+  .symInfo { font-size: 19px; line-height: 1.4; padding: 12px 16px; border-radius: 12px; background: #fff; border: 2px dashed #f5a75a; color: #5b6676; min-height: 82px; }
+  .symInfo.on { border: 2px solid var(--accent); background: var(--accent-soft); color: var(--text); }
+  .symInfo b { color: var(--accent-dk); font-style: italic; }
+  .worked { background: #fff; border-left: 7px solid var(--accent); border-radius: 12px; padding: 12px 20px; font-family: var(--math); font-size: 26px; line-height: 1.5; }
+  svg .hl { stroke: var(--accent) !important; stroke-width: 6 !important; }
+  svg text.hl { fill: var(--accent-dk) !important; stroke: none !important; font-weight: 800; }
+
+  .fbox { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; gap: 8px; }
+  .fbox .f { font-family: var(--math); font-size: 36px; }
+  .fbox .f i { font-style: italic; }
+  .fbox .vars { font-size: 19px; line-height: 1.45; color: var(--muted); }
+  .fbox .vars b { color: var(--text); font-family: var(--math); font-style: italic; font-size: 21px; }
+  .fbox .ex { font-size: 25px; background: var(--accent-soft); border-radius: 10px; padding: 8px 14px; font-family: var(--math); }
+  .fnum { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 800; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; flex: none; }
+
+  /* tahání hrany */
+  #dragWrap { cursor: ns-resize; touch-action: none; }
+  #edge { position: absolute; left: 0; right: 0; height: 0; border-top: 4px solid var(--accent); }
+  #edge .grip { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); background: var(--accent); color: #fff; font-weight: 800; font-size: 17px; padding: 8px 14px; border-radius: 22px; box-shadow: 0 3px 10px #0004; white-space: nowrap; }
+  #horizon { position: absolute; left: 0; right: 0; border-top: 3px dashed #ffffffd0; }
+  #horizon span { position: absolute; left: 10px; top: -30px; font-size: 16px; font-weight: 800; color: #fff; background: #1e2935b0; padding: 2px 8px; border-radius: 5px; }
+  #dragBox { position: absolute; border: 3px solid var(--accent); border-bottom: none; }
+  .live { font-family: var(--math); font-size: 25px; line-height: 1.55; }
+  .live b { font-family: var(--font); }
+  .verdict { border-radius: 14px; padding: 14px 18px; font-size: 23px; font-weight: 800; }
+  .verdict.ok { background: var(--ok-soft); color: var(--ok); border: 2px solid var(--ok); }
+  .verdict.bad { background: var(--bad-soft); color: var(--bad); border: 2px solid var(--bad); }
+  .verdict small { display: block; font-size: 17px; font-weight: 600; margin-top: 4px; color: var(--text); }
+
+  /* útočník */
+  .threat { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 12px; }
+  .threat h3 { font-size: 30px; margin: 0; }
+  .threat p { font-size: 22px !important; }
+  .via { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; }
+  .via p { font-size: 22px; line-height: 1.3; }
+  .via { padding: 18px 20px; }
+
+  /* kvíz z literatury */
+  .quiz { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 18px; }
+  .qcard { position: relative; background: #fff; border: 2px solid var(--line); border-radius: 18px; padding: 18px 22px; cursor: pointer; display: flex; flex-direction: column; transition: border-color .2s, background .2s; overflow: hidden; }
+  .qcard:hover { border-color: var(--accent); }
+  .qcard .top { display: flex; gap: 14px; align-items: flex-start; }
+  .qcard .q { font-size: 24px; font-weight: 700; line-height: 1.28; }
+  .qcard .thumb { width: 78px; height: 78px; border-radius: 10px; object-fit: cover; flex: none; }
+  .qcard .hint { margin-top: auto; font-size: 17px; color: var(--accent-dk); font-weight: 700; }
+  .qcard .a { display: none; }
+  .qcard.shown { background: #fffaf3; border-color: var(--accent); }
+  .qcard.shown .hint { display: none; }
+  .qcard.shown .a { display: block; margin-top: 10px; }
+  .qcard .big { font-size: 40px; font-weight: 800; color: var(--accent); line-height: 1.05; letter-spacing: -.01em; margin-top: 6px; }
+  .qcard .a p { font-size: 20px; line-height: 1.35; }
+
+  /* oslepení */
+  .status { border-radius: 16px; padding: 16px 20px; border: 3px solid; transition: background .2s, border-color .2s; }
+  .status.ok { background: var(--ok-soft); border-color: var(--ok); }
+  .status.bad { background: var(--bad-soft); border-color: var(--bad); }
+  .status .t { font-size: 15px; letter-spacing: .1em; text-transform: uppercase; font-weight: 800; color: var(--muted); }
+  .status .v { font-size: 34px; font-weight: 800; line-height: 1.15; margin-top: 4px; }
+  .status.ok .v { color: var(--ok); } .status.bad .v { color: var(--bad); }
+  .status .s { font-size: 19px; margin-top: 4px; }
+  .ticks { position: relative; height: 20px; font-size: 15px; color: var(--muted); margin-top: -4px; }
+  .ticks span { position: absolute; transform: translateX(-50%); }
+  .intval { font-size: 54px; font-weight: 800; color: var(--accent); line-height: 1; }
+
+  /* hlasování */
+  .votes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .vote { background: #fff; border: 2px solid var(--line); border-radius: 18px; padding: 20px; cursor: pointer; text-align: center; transition: border-color .2s; }
+  .vote:hover { border-color: var(--accent); }
+  .vote .l { font-size: 15px; font-weight: 800; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+  .vote .s { font-size: 34px; font-weight: 800; margin: 2px 0; }
+  .vote .r { display: none; margin-top: 10px; border-radius: 12px; padding: 10px; font-size: 24px; font-weight: 800; }
+  .vote.shown .r { display: block; }
+  .vote .r.ok { background: var(--ok-soft); color: var(--ok); }
+  .vote .r.bad { background: var(--bad-soft); color: var(--bad); }
+  .vote .r small { display: block; font-size: 18px; font-weight: 600; color: var(--text); }
+  .legend { display: flex; gap: 26px; margin: 2px 0 4px; color: var(--muted); font-weight: 700; font-size: 16px; }
+  .legend i { display: inline-block; width: 18px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+
+  /* senzory a fúze */
+  .sens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .sens .card { display: flex; flex-direction: column; gap: 10px; }
+  .sens h3 { font-size: 28px; margin: 0; }
+  .pm { font-size: 19px; line-height: 1.4; }
+  .pm b { color: var(--ok); } .pm i { font-style: normal; font-weight: 800; color: var(--bad); }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modes .btn { width: 100%; }
+  .srow { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 20px; }
+  .srow .k { width: 150px; font-weight: 800; color: var(--muted); font-size: 15px; text-transform: uppercase; letter-spacing: .06em; flex: none; }
+  .srow .val { font-weight: 700; }
+  .ok-t { color: var(--ok); } .bad-t { color: var(--bad); } .mid-t { color: var(--accent-dk); }
+  table.t { border-collapse: collapse; width: 100%; font-size: 18px; background: #fff; border-radius: 14px; overflow: hidden; }
+  table.t th, table.t td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.t th { color: var(--muted); font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; background: #faf4ea; }
+
+  /* problém → řešení */
+  .pairs { display: grid; grid-template-columns: 1fr 50px 1fr; gap: 14px 10px; align-items: stretch; }
+  .pairs .pb, .pairs .rs { display: flex; align-items: center; gap: 16px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 20px; }
+  .pairs .pb { border-left: 6px solid var(--bad); }
+  .pairs .rs { border-left: 6px solid var(--ok); }
+  .pairs .pb p, .pairs .rs p { font-size: 19px; line-height: 1.32; }
+  .pairs .pb b, .pairs .rs b { display: block; font-size: 22px; }
+  .pairs .ar { display: flex; align-items: center; justify-content: center; color: var(--accent); }
+  .pairs .hd { font-size: 15px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding-left: 6px; }
+
+  .reg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .reg div { border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; background: #fff; }
+  .reg b { display: block; font-size: 21px; color: var(--accent-dk); }
+  .reg span { font-size: 17px; color: var(--muted); line-height: 1.35; display: block; margin-top: 2px; }
+
+  .refs { columns: 2; column-gap: 44px; font-size: 15.5px; line-height: 1.38; color: var(--text); }
+  .refs p { font-size: 15.5px; line-height: 1.38; margin-bottom: 7px; break-inside: avoid; padding-left: 18px; text-indent: -18px; }
+  .refs i { color: var(--muted); }
+
+  #progress { position: fixed; left: 0; top: 0; height: 6px; background: var(--accent); transition: width .3s; z-index: 10; }
+  #counter { position: fixed; right: 16px; bottom: 6px; font-size: 13px; color: #8a7c69; z-index: 10; font-weight: 700; display: none; }
+  #focusTip { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 20; background: #1e2935; color: #fff; font: 600 15px var(--font); padding: 9px 16px; border-radius: 10px; box-shadow: 0 6px 20px #0003; display: none; }
+  #focusTip.on { display: block; }
+  @media print { #focusTip { display: none !important; } }
+  #hint { position: fixed; left: 16px; bottom: 10px; font-size: 13px; color: #9b8d7a; z-index: 10; }
+  #nav { position: fixed; right: 14px; bottom: 12px; z-index: 15; display: flex; align-items: center; gap: 4px; padding: 4px; background: #fffdf9f2; border: 1px solid #e6dccd; border-radius: 999px; box-shadow: 0 4px 16px #3a2a1022; opacity: .8; transition: opacity .2s; font: 800 15px var(--font); color: #8a7c69; user-select: none; -webkit-user-select: none; }
+  #nav:hover { opacity: 1; }
+  #nav button { width: 42px; height: 42px; border-radius: 50%; border: none; padding: 0; background: var(--accent-soft); color: var(--accent-dk); cursor: pointer; display: grid; place-items: center; transition: background .15s, color .15s; -webkit-tap-highlight-color: transparent; }
+  #nav button:hover { background: var(--accent); color: #fff; }
+  #nav button:active { transform: scale(.94); }
+  #nav button:disabled { opacity: .35; cursor: default; background: var(--accent-soft); color: var(--accent-dk); }
+  #nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  #navNum { min-width: 58px; text-align: center; font-variant-numeric: tabular-nums; }
+  .pg { display: none; }
+  html.tisk #nav { display: none; }
+  html.tisk .pg { display: block; }
+
+  @page { size: 1600px 900px; margin: 0; }
+  @media print {
+    html, body { overflow: visible; height: auto; background: var(--bg); }
+    #deck { position: static; transform: none !important; width: 1600px; height: auto; }
+    .slide { position: relative; opacity: 1; visibility: visible; height: 900px; page-break-after: always; break-after: page; transition: none; }
+    #progress, #counter, #hint, #nav { display: none !important; }
+    .pg { display: block !important; }
+    .ans { opacity: 1 !important; visibility: visible !important; transition: none; }
+    .pre { display: none !important; }
+    .swap .ans { display: block !important; }
+    .qcard .a, .vote .r { display: block !important; }
+    .qcard .hint { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<!-- sada ikon (inline SVG) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-cam" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8.5 7l1.5-3h4l1.5 3"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 2.2"/><path d="M8 15l3-4 2 2 3-4"/></symbol>
+  <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M3 20h18M6 20l6-12M18 20V8"/><path d="M15.5 10.5L18 8l2.5 2.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 13V9M12 13l3 2M9 3h6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></symbol>
+  <symbol id="i-ghost" viewBox="0 0 24 24"><path d="M5 21V10a7 7 0 0114 0v11l-2.5-2-2.3 2-2.2-2-2.2 2-2.3-2z"/><circle cx="9.5" cy="10.5" r=".8"/><circle cx="14.5" cy="10.5" r=".8"/></symbol>
+  <symbol id="i-distq" viewBox="0 0 24 24"><path d="M3 18h18M3 14.5v7M21 14.5v7"/><path d="M9.5 5.5a2.5 2.5 0 115 0c0 1.7-2.5 2-2.5 3.6M12 11.8v.2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-sticker" viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="11" rx="1"/><path d="M12 15v6M8 21h8M9 9.5h6"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><path d="M12 12l6-6"/><path d="M4.9 19.1A10 10 0 1119.1 19.1"/><path d="M8.5 15.5a5 5 0 117 0"/><circle cx="12" cy="12" r="1.2"/></symbol>
+  <symbol id="i-lidar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2L19 19M5 19l2.8-2.8M16.2 7.8L19 5"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 15v-4l2.2-5h9.6L19 11v4"/><rect x="3" y="11" width="18" height="6" rx="2"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></symbol>
+  <symbol id="i-track" viewBox="0 0 24 24"><path d="M3 19c4 0 5-12 9-12s5 12 9 12" stroke-dasharray="2.5 2.5"/><circle cx="12" cy="7" r="2.5"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7h6zM19 7l-3 7h6zM8 21h8"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.2"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 10a1.5 1.5 0 001.3 2h11.4a1.5 1.5 0 001.3-2l-5-10V3M7.5 15h9"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 013 0V11M11 10V4.5a1.5 1.5 0 013 0V11M14 10.5V6a1.5 1.5 0 013 0v8c0 4-2.5 7-6.5 7S5 18 4.5 15.5L3.5 12a1.5 1.5 0 012.8-1L8 13"/></symbol>
+  <symbol id="i-q" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 115 0c0 1.7-2.5 2-2.5 3.6M12 16.8v.2"/></symbol>
+  <symbol id="i-pointer" viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z"/><path d="M13 12l6 6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></symbol>
+  <symbol id="car-side" viewBox="0 0 232 82">
+    <path d="M6,60 C5,52 8,47 16,45 L40,42 C46,41 50,40 56,38 L76,24 C86,15 97,11 110,10 L142,10 C154,10 162,13 172,20 L190,34 C206,36 218,38 225,42 C230,45 231,50 231,56 L231,62 C231,65 229,66 226,66 L198,66 A18,18 0 0 0 162,66 L70,66 A18,18 0 0 0 34,66 L10,66 C7,66 6,64 6,62 Z" style="fill:currentColor; stroke:var(--cs,#4a5a6c); stroke-width:1.6; stroke-linejoin:round"/>
+    <path d="M80,37 L93,22 C99,17 105,15 113,15 L127,15 L127,37 Z M132,15 L142,15 C151,15 158,18 165,23 L178,35 L132,37 Z" style="fill:#e4ebf2; stroke:var(--cs,#4a5a6c); stroke-width:1.1"/>
+    <path d="M129,40 L129,62 M58,44 L186,42" style="fill:none; stroke:var(--cs,#4a5a6c); stroke-width:1; opacity:.55"/>
+    <circle cx="52" cy="66" r="15" fill="#2f3742"/><circle cx="52" cy="66" r="7" fill="#c9ced6"/>
+    <circle cx="180" cy="66" r="15" fill="#2f3742"/><circle cx="180" cy="66" r="7" fill="#c9ced6"/>
+  </symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+</svg>
+
+<div id="progress"></div>
+<div id="deck">
+
+  <!-- 1 titul -->
+  <section class="slide title-slide" data-id="titul">
+    <div class="title-left">
+      <div class="kicker">Semestrální práce · AP9BI</div>
+      <h1>Zranitelnost kamerové percepce autonomních vozidel vůči útokům a&nbsp;možnosti <em>obrany</em></h1>
+      <div class="bar"></div>
+      <div class="title-meta">
+        <strong>Bc. Libor Výleta</strong><br>
+        Bezpečnost informačních systémů (AP9BI)<br>
+        <span class="muted">Univerzita Tomáše Bati ve Zlíně · Fakulta aplikované informatiky · 2026</span>
+      </div>
+      <div class="story"><span>1 jak auto vidí</span><span>2 co umí útočník</span><span>3 co jsem zjistil</span><span>4 jak se bránit</span></div>
+      <img class="logo" src="media/logo_utb_cz.png" alt="Univerzita Tomáše Bati ve Zlíně">
+    </div>
+    <div class="title-right"><img src="media/titul_den.jpg" alt="Vozidlo v simulátoru CARLA, pohled z dronu"></div>
+  </section>
+
+  <!-- 2 vidi -->
+  <section class="slide" data-id="vidi">
+    <div class="kicker">1 · Jak auto vidí <span class="ask"><svg class="i"><use href="#i-hand"/></svg>Sedli byste si do auta, které řídí jen kamera?</span></div>
+    <h2>Auto se rozhoduje podle toho, <em>co vidí kamera</em></h2>
+    <div class="row grow">
+      <div class="col" style="flex:1.6">
+        <div class="imgbox"><img src="media/carla_chodec.jpg" alt="Pohled kamery auta v CARLA s chodcem"><div class="ovl" id="uvodOvl"></div></div>
+        <div class="row" style="gap:14px; margin-top:14px">
+          <div class="col photo thumbph"><img src="media/carla_semafory.jpg" alt="Křižovatka se semafory"><span class="lbl">semafory</span></div>
+          <div class="col photo thumbph"><img src="media/carla_noc.jpg" alt="Noc" style="object-position:center 60%"><span class="lbl">noc</span></div>
+          <div class="col photo thumbph"><img src="media/carla_mlha.jpg" alt="Hustá mlha" style="object-position:center 68%"><span class="lbl">mlha</span></div>
+        </div>
+      </div>
+      <div class="col stack" style="gap:18px; justify-content:center">
+        <div style="display:flex; gap:16px; align-items:flex-start"><div class="ib"><svg class="i"><use href="#i-cam"/></svg></div><p>Kamera je levná a&nbsp;jako jediná pozná <b>barvy semaforů a&nbsp;značky</b>.</p></div>
+        <div style="display:flex; gap:16px; align-items:flex-start"><div class="ib"><svg class="i"><use href="#i-chip"/></svg></div><p>Neuronová síť dostane jen <b>pixely</b> a&nbsp;sama v&nbsp;nich hledá auta a&nbsp;chodce.</p></div>
+        <div style="display:flex; gap:16px; align-items:flex-start"><div class="ib acc"><svg class="i"><use href="#i-shield"/></svg></div><p>V&nbsp;mé diplomce podle obrazu auto <b>řídí</b> a&nbsp;pojistka podle něj <b>brzdí</b>.</p></div>
+      </div>
+    </div>
+    <div class="pg">2</div>
+  </section>
+
+  <!-- 3 retezec -->
+  <section class="slide" data-id="retezec">
+    <div class="kicker">1 · Jak auto vidí · celý řetězec</div>
+    <h2>Pojistka vidí jen to, co jí <em>ukáže kamera</em></h2>
+    <div class="pipe" style="margin-top:14px">
+      <div class="stage"><div class="ib"><svg class="i"><use href="#i-cam"/></svg></div><b>Kamera</b><span>snímek 1280×720</span></div>
+      <div class="arrow"><svg class="i"><use href="#i-arrow"/></svg></div>
+      <div class="stage hot"><div class="attack-tag">SEM MÍŘÍ ÚTOK</div><div class="ib acc"><svg class="i"><use href="#i-box"/></svg></div><b>YOLO</b><span>obdélník kolem auta + jistota 0–1</span></div>
+      <div class="arrow"><svg class="i"><use href="#i-arrow"/></svg></div>
+      <div class="stage"><div class="ib"><svg class="i"><use href="#i-ruler"/></svg></div><b>Vzdálenost</b><span>podle toho, jak nízko auto stojí</span></div>
+      <div class="arrow"><svg class="i"><use href="#i-arrow"/></svg></div>
+      <div class="stage"><div class="ib"><svg class="i"><use href="#i-clock"/></svg></div><b>Čas do srážky</b><span>TTC v&nbsp;sekundách</span></div>
+      <div class="arrow"><svg class="i"><use href="#i-arrow"/></svg></div>
+      <div class="stage"><div class="ib"><svg class="i"><use href="#i-shield"/></svg></div><b>Pojistka</b><span>pod 1,5 s → brzdi</span></div>
+    </div>
+    <div class="row grow center" style="margin-top:30px">
+      <div class="col card" style="border-left:7px solid var(--bad); padding:28px 30px">
+        <p class="statement">Když YOLO auto <em>nevidí</em>,<br>pojistka nebrzdí.</p>
+        <p class="muted" style="margin-top:10px">Chybějící auto je pro ni volná silnice.</p>
+      </div>
+      <div class="col card" style="border-left:7px solid var(--teal); padding:28px 30px">
+        <p class="statement">Útočník nemusí do počítače auta.</p>
+        <p class="muted" style="margin-top:10px">Stačí mu změnit, co kamera vidí.</p>
+      </div>
+    </div>
+    <div class="pg">3</div>
+  </section>
+
+  <!-- 4 kviz-yolo -->
+  <section class="slide" data-id="kviz-yolo">
+    <div class="kicker">1 · Jak auto vidí · YOLO <span class="ask"><svg class="i"><use href="#i-hand"/></svg>tipujte</span></div>
+    <h2>Kolik aut na tomhle snímku <em>najde YOLO</em>?</h2>
+    <div class="row grow">
+      <div class="col" style="flex:1.55">
+        <div class="imgbox ix" id="yoloImg"><img src="media/yolo_kviz.jpg" alt="Snímek z kamery auta v CARLA"><div class="ovl ans" id="yoloOvl"></div></div>
+        <div class="caption">Kamera auta v&nbsp;CARLA (výřez), předtrénovaný YOLO11m, práh jistoty 0,25</div>
+      </div>
+      <div class="col stack">
+        <div class="card">
+          <p class="small muted" style="margin-bottom:10px">Váš tip:</p>
+          <div class="btns ix" id="tips"><button class="btn ghost tipbtn">1</button><button class="btn ghost tipbtn">2</button><button class="btn ghost tipbtn">3</button><button class="btn ghost tipbtn">4</button><button class="btn ghost tipbtn">5</button></div>
+          <button class="btn ix" id="yoloReveal" style="margin-top:16px; width:100%">Ukázat detekce <span class="kbd">O</span></button>
+        </div>
+        <div class="answer-box ans">
+          <div class="big">3 auta</div>
+          <p class="small" style="margin-top:6px">Každé s&nbsp;jistotou a&nbsp;vzdáleností. Jedno auto vzadu <b style="color:var(--bad)">nenašlo</b>.</p>
+        </div>
+        <div class="stat ok ans"><div class="num">300 / 300</div><div class="lbl">snímků záznamu, na kterých YOLO auto před námi našlo (bez narušení)</div></div>
+      </div>
+    </div>
+    <div class="pg">4</div>
+  </section>
+
+  <!-- 5 vzorec -->
+  <section class="slide" data-id="vzorec">
+    <div class="kicker">1 · Jak auto vidí · vzdálenost <span class="ask"><svg class="i"><use href="#i-pointer"/></svg>klikněte na písmeno ve vzorci, tabulce nebo obrázku</span></div>
+    <h2>Vzdálenost se pozná podle toho, <em>jak nízko</em> auto stojí v&nbsp;obraze</h2>
+    <div class="row grow">
+      <div class="col" style="flex:1.3">
+        <div class="card" style="padding:12px 14px">
+          <svg viewBox="0 0 820 410" width="100%" id="geoSvg" font-family="Segoe UI, -apple-system, Arial, sans-serif">
+            <rect x="0" y="0" width="820" height="330" fill="#f3f7fa"/>
+            <rect x="0" y="330" width="820" height="80" fill="#ebe7e0"/>
+            <line x1="0" y1="330" x2="820" y2="330" stroke="#8b8172" stroke-width="1.5"/>
+            <rect x="18" y="10" width="380" height="186" rx="10" fill="#fff" stroke="#e2d8c9"/>
+            <text x="34" y="34" font-size="13" font-weight="700" letter-spacing="1.5" fill="#5b6676">UVNITŘ KAMERY (SNÍMEK)</text>
+            <line data-k="cy" x1="64" y1="100" x2="384" y2="100" stroke="#8a94a3" stroke-width="1.3" stroke-dasharray="6 5"/>
+            <line x1="300" y1="48" x2="300" y2="186" stroke="#1e2935" stroke-width="2"/>
+            <text x="306" y="60" font-size="13" fill="#5b6676">snímač</text>
+            <line data-k="f" x1="60" y1="100" x2="300" y2="100" stroke="#b85700" stroke-width="2.5"/>
+            <text data-k="f" x="150" y="91" font-size="16" font-style="italic" font-weight="700" fill="#b85700">f = 640 px</text>
+            <line x1="60" y1="100" x2="300" y2="176.2" stroke="#d33a2c" stroke-width="1.6"/>
+            <line data-k="v" x1="300" y1="100" x2="300" y2="176.2" stroke="#b85700" stroke-width="4"/>
+            <text data-k="v" x="308" y="144" font-size="16" font-style="italic" font-weight="700" fill="#b85700">v − c<tspan font-size="11" dy="3">y</tspan></text>
+            <path d="M110,100 A50,50 0 0 1 107.6,115.1" fill="none" stroke="#1e2935" stroke-width="1.3"/>
+            <text x="114" y="120" font-size="15" font-style="italic" fill="#1e2935">α</text>
+            <circle cx="60" cy="100" r="4" fill="#1e2935"/>
+            <text x="34" y="80" font-size="13" fill="#5b6676">objektiv</text>
+            <use href="#car-side" x="70" y="249" width="232" height="82" style="color:#d6dee7; --cs:#4a5a6c"/>
+            <use href="#car-side" x="560" y="249" width="232" height="82" style="color:#f4d2b1; --cs:#a85a12"/>
+            <line x1="233" y1="265" x2="233" y2="222" stroke="#4a5a6c" stroke-width="3"/>
+            <rect x="222" y="206" width="26" height="17" rx="3" fill="#3a4552"/>
+            <circle cx="248" cy="214.5" r="3.2" fill="#3a4552"/>
+            <path d="M44,215 H220" stroke="#8a94a3" stroke-width="1" stroke-dasharray="3 3"/>
+            <line data-k="cy" x1="252" y1="215" x2="815" y2="215" stroke="#8a94a3" stroke-width="1.3" stroke-dasharray="6 5"/>
+            <text data-k="cy" x="540" y="206" font-size="14" fill="#5b6676">osa kamery → horizont (řádek c<tspan font-size="10" dy="3">y</tspan><tspan dy="-3">)</tspan></text>
+            <line x1="250" y1="215" x2="612" y2="330" stroke="#d33a2c" stroke-width="2"/>
+            <circle cx="612" cy="330" r="4.5" fill="#d33a2c"/>
+            <text x="620" y="352" font-size="13" fill="#d33a2c" font-weight="700">zadní kolo stojí na silnici</text>
+            <path d="M340,215 A90,90 0 0 1 335.8,242.2" fill="none" stroke="#1e2935" stroke-width="1.3"/>
+            <text x="344" y="238" font-size="16" font-style="italic" fill="#1e2935">α</text>
+            <line data-k="h" x1="48" y1="215" x2="48" y2="330" stroke="#08706d" stroke-width="2"/>
+            <path d="M42,215 h12 M42,330 h12" stroke="#08706d" stroke-width="1.6"/>
+            <text data-k="h" x="-272" y="38" transform="rotate(-90)" text-anchor="middle" font-size="16" font-style="italic" font-weight="700" fill="#08706d">H = 2,3 m</text>
+            <path d="M250,336 v40 M612,336 v40" stroke="#8a94a3" stroke-width="1" stroke-dasharray="3 3"/>
+            <line data-k="d" x1="250" y1="370" x2="424" y2="370" stroke="#08706d" stroke-width="2"/>
+            <line data-k="d" x1="438" y1="370" x2="612" y2="370" stroke="#08706d" stroke-width="2"/>
+            <path d="M250,363 v14 M612,363 v14" stroke="#08706d" stroke-width="1.6"/>
+            <path d="M418,378 l8,-16 M432,378 l8,-16" stroke="#08706d" stroke-width="1.6"/>
+            <path d="M414,338 l8,-16 M428,338 l8,-16" stroke="#8b8172" stroke-width="1.4"/>
+            <text data-k="d" x="431" y="398" text-anchor="middle" font-size="16" font-style="italic" font-weight="700" fill="#08706d">d = vzdálenost k bodu dotyku</text>
+          </svg>
+        </div>
+        <div class="card" style="margin-top:14px; padding:14px 22px; display:flex; align-items:center; gap:24px">
+          <p class="small" style="flex:1">Na silnici i&nbsp;v&nbsp;kameře je <b>stejný úhel α</b>, proto platí:</p>
+          <span class="m" style="font-size:30px; white-space:nowrap">tan α = <span class="symt" data-k="h">H</span> / <span class="symt" data-k="d">d</span> = (<span class="symt" data-k="v">v</span> − <span class="symt" data-k="cy">c<sub>y</sub></span>) / <span class="symt" data-k="f">f</span></span>
+        </div>
+        <p class="xs muted" style="margin-top:14px; padding:0 6px">f plyne ze šířky snímku 1280 px a&nbsp;zorného úhlu 90°. Vzdálenost na obrázku je zkrácená. Kontrolní odhad z&nbsp;výšky obdélníku (auto vysoké 1,5 m): 640 · 1,5 / 57,7 ≈ 16,6 m.</p>
+      </div>
+      <div class="col stack" style="gap:14px">
+        <div class="formula ix">
+          <button class="sym" data-k="d">d</button> =
+          <span class="frac"><span><button class="sym" data-k="f">f</button> · <button class="sym" data-k="h">H</button></span><span><button class="sym" data-k="v">v</button> − <button class="sym" data-k="cy">c<sub>y</sub></button></span></span>
+        </div>
+        <table class="q ix">
+          <tr data-k="f"><td>f</td><td>ohnisková vzdálenost v&nbsp;pixelech</td><td class="v">640 px</td></tr>
+          <tr data-k="h"><td>H</td><td>výška kamery nad silnicí (držák nad střechou)</td><td class="v">2,3 m</td></tr>
+          <tr data-k="v"><td>v</td><td>řádek spodní hrany obdélníku (shora)</td><td class="v">447 px</td></tr>
+          <tr data-k="cy"><td>c<sub>y</sub></td><td>řádek středu snímku = horizont</td><td class="v">360 px</td></tr>
+          <tr data-k="d"><td>d</td><td>vzdálenost auta</td><td class="v">?</td></tr>
+        </table>
+        <div id="symInfo" class="symInfo">Klikněte na kterékoli písmeno a&nbsp;ukáže se, co znamená a&nbsp;kde je na obrázku.</div>
+        <div class="worked">
+          f = 1280 / (2 · tan 45°) = 640 px<br>
+          d = 640 · 2,3 / (447 − 360) ≈ <b style="color:var(--accent-dk)">16,9 m</b>
+        </div>
+      </div>
+    </div>
+    <div class="pg">5</div>
+  </section>
+
+  <!-- 6 ttc -->
+  <section class="slide" data-id="ttc">
+    <div class="kicker">1 · Jak auto vidí · čas do srážky a pojistka</div>
+    <h2>Pojistka brzdí, když čas do srážky klesne <em>pod 1,5 s</em></h2>
+    <div class="row" style="gap:20px">
+      <div class="col fbox">
+        <div style="display:flex;align-items:center"><span class="fnum">1</span><h3 style="margin:0">Čas do srážky</h3></div>
+        <div class="f"><i>TTC</i> = <i>d</i> / Δ<i>v</i></div>
+        <div class="vars"><b>d</b> vzdálenost [m] · <b>Δv</b> rychlost přibližování [m/s]</div>
+        <div class="ex">16,9 / 13,9 ≈ 1,2 s</div>
+      </div>
+      <div class="col fbox">
+        <div style="display:flex;align-items:center"><span class="fnum">2</span><h3 style="margin:0">Dráha zastavení</h3></div>
+        <div class="f"><i>s</i> = <i>v</i>·<i>t</i><sub>z</sub> + <i>v</i>² / (2<i>a</i>)</div>
+        <div class="vars"><b>t<sub>z</sub></b> zpoždění brzdy 0,1 s · <b>a</b> zpomalení 8 m/s²</div>
+        <div class="ex">13,9·0,1 + 13,9²/16 ≈ <b>13,4 m</b></div>
+      </div>
+      <div class="col fbox" style="border:2px solid var(--accent)">
+        <div style="display:flex;align-items:center"><span class="fnum">3</span><h3 style="margin:0">Kdy začne brzdit</h3></div>
+        <div class="f"><i>d</i><sub>brzdi</sub> = <i>T</i> · <i>v</i></div>
+        <div class="vars"><b>T</b> práh 1,5 s · <b>v</b> 50 km/h = 13,9 m/s</div>
+        <div class="ex">1,5 · 13,9 ≈ <b>20,8 m</b></div>
+      </div>
+    </div>
+    <div class="card grow" style="margin-top:20px; padding:8px 18px; display:flex; align-items:center">
+      <svg viewBox="0 0 1400 245" width="100%" font-family="Segoe UI, -apple-system, Arial, sans-serif">
+        <rect x="0" y="190" width="1400" height="55" fill="#ebe7e0"/>
+        <line x1="0" y1="190" x2="1400" y2="190" stroke="#8b8172" stroke-width="1.5"/>
+        <line x1="0" y1="218" x2="1400" y2="218" stroke="#fff" stroke-width="3" stroke-dasharray="26 18"/>
+        <use href="#car-side" x="101" y="122" width="195" height="69" style="color:#e9eef3; --cs:#9aa6b4" opacity=".75"/>
+        <use href="#car-side" x="664" y="122" width="195" height="69" style="color:#d6dee7; --cs:#4a5a6c"/>
+        <use href="#car-side" x="1170" y="122" width="195" height="69" style="color:#f4d2b1; --cs:#a85a12"/>
+        <line x1="296" y1="18" x2="296" y2="196" stroke="#f57800" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="306" y="30" font-size="18" fill="#b85700" font-weight="700">začne brzdit: 20,8 m před autem</text>
+        <line x1="296" y1="72" x2="355" y2="72" stroke="#f57800" stroke-width="4"/>
+        <line x1="355" y1="72" x2="859" y2="72" stroke="#0b8c89" stroke-width="4"/>
+        <line x1="859" y1="72" x2="1170" y2="72" stroke="#1f8f45" stroke-width="4"/>
+        <path d="M296,64 v16 M355,64 v16 M859,64 v16 M1170,64 v16" stroke="#5b6676" stroke-width="1.5"/>
+        <text x="326" y="104" font-size="16" fill="#b85700" font-weight="700">zpoždění 1,4 m</text>
+        <text x="607" y="60" font-size="17" text-anchor="middle" fill="#08706d" font-weight="700">brzdění 12,1 m</text>
+        <text x="1014" y="60" font-size="17" text-anchor="middle" fill="#1f8f45" font-weight="700">rezerva 7,4 m = 0,53 s jízdy</text>
+        <path d="M859,80 v108" stroke="#5b6676" stroke-width="1" stroke-dasharray="3 3"/>
+        <path d="M1170,80 v108" stroke="#5b6676" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="198" y="238" font-size="15" text-anchor="middle" fill="#5b6676">auto na začátku brzdění</text>
+        <text x="761" y="238" font-size="15" text-anchor="middle" fill="#1e2935" font-weight="700">zastaví</text>
+        <text x="1267" y="238" font-size="15" text-anchor="middle" fill="#1e2935" font-weight="700">stojící auto</text>
+      </svg>
+    </div>
+    <div class="pg">6</div>
+  </section>
+
+  <!-- 7 utocnik -->
+  <section class="slide" data-id="utocnik">
+    <div class="kicker">2 · Co umí útočník</div>
+    <h2>Útočníkovi stačí, aby kamera viděla <em>něco jiného</em></h2>
+    <div class="grow vc">
+    <div class="row" style="gap:20px">
+      <div class="col threat"><div class="ib bad"><svg class="i"><use href="#i-eyeoff"/></svg></div><h3>Auto zmizí</h3><p class="small muted">Pojistka nebrzdí.</p><div><span class="pill">integrita</span></div></div>
+      <div class="col threat"><div class="ib bad"><svg class="i"><use href="#i-ghost"/></svg></div><h3>Objeví se fantom</h3><p class="small muted">Auto zbytečně prudce zabrzdí.</p><div><span class="pill">integrita</span> <span class="pill teal">dostupnost</span></div></div>
+      <div class="col threat"><div class="ib bad"><svg class="i"><use href="#i-distq"/></svg></div><h3>Špatná vzdálenost</h3><p class="small muted">Pojistka brzdí pozdě.</p><div><span class="pill">integrita</span></div></div>
+    </div>
+    <p class="small muted" style="margin:28px 0 12px; font-weight:700">Jak to udělá:</p>
+    <div class="row" style="gap:20px">
+      <div class="col via"><div class="ib sm acc"><svg class="i"><use href="#i-sticker"/></svg></div><p>nálepka nebo záplata na&nbsp;značce či&nbsp;autě</p></div>
+      <div class="col via"><div class="ib sm acc"><svg class="i"><use href="#i-sun"/></svg></div><p>světlo, LED nebo laser přímo do kamery</p></div>
+      <div class="col via"><div class="ib sm acc"><svg class="i"><use href="#i-board"/></svg></div><p>projektor nebo hacknutý billboard</p></div>
+    </div>
+    <div class="card" style="display:flex; gap:16px; align-items:center; padding:16px 22px; margin-top:24px"><div class="ib sm blue"><svg class="i"><use href="#i-lock"/></svg></div><p class="small">Model znát nemusí: útok vyrobený na jednom modelu často zabere i&nbsp;na jiném.</p></div>
+    </div>
+    <div class="pg">7</div>
+  </section>
+
+  <!-- 8 kviz-lit -->
+  <section class="slide" data-id="kviz-lit">
+    <div class="kicker">2 · Co umí útočník <span class="ask"><svg class="i"><use href="#i-q"/></svg>hádejte, co se stalo</span></div>
+    <h2>Ve skutečném světě to funguje. <em>Co se stalo?</em></h2>
+    <div class="quiz grow ix" id="quiz">
+      <div class="qcard"><div class="top"><img class="thumb" src="media/eykholt_stop.png" alt="STOP s nálepkami (převzato z Eykholt a kol. 2018)"><div class="q">Pár černobílých nálepek na značce STOP</div></div><div class="hint">Co přečetla síť? ›</div>
+        <div class="a"><span class="pill bad">záměna</span><div class="big">84,8 %</div><p>snímků z&nbsp;jedoucího auta: „rychlost 45“ <span class="cite">Eykholt 2018</span></p></div></div>
+      <div class="qcard"><div class="top"><div class="q">Potištěná cedule, kterou člověk drží před sebou</div></div><div class="hint">Kolik lidí detektor najde? ›</div>
+        <div class="a"><span class="pill bad">zmizení</span><div class="big">26 %</div><p>osob najde YOLOv2 (bez cedule 100 %) <span class="cite">Thys 2019</span></p></div></div>
+      <div class="qcard"><div class="top"><div class="q">Značka STOP na okamžik v&nbsp;reklamě na billboardu</div></div><div class="hint">Co udělala Tesla? ›</div>
+        <div class="a"><span class="pill bad">fantom</span><div class="big">zastavila</div><p>stačil fantom zobrazený na zlomek sekundy <span class="cite">Nassi 2020</span></p></div></div>
+      <div class="qcard"><div class="top"><div class="q">Pár malých nálepek na silnici v&nbsp;křižovatce</div></div><div class="hint">Kam Tesla odbočila? ›</div>
+        <div class="a"><span class="pill bad">fantom pruhu</span><div class="big">protisměr</div><p>nálepky vzala jako pruh <span class="cite">Tencent Keen Lab 2019</span></p></div></div>
+      <div class="qcard"><div class="top"><div class="q">Infračervené LED za pár desítek dolarů namířené do kamery</div></div><div class="hint">Na jak dlouho kamera oslepla? ›</div>
+        <div class="a"><span class="pill bad">oslepení</span><div class="big">5,3 s</div><p>celkem, vybavení pod 60 USD <span class="cite">Petit 2015</span></p></div></div>
+      <div class="qcard"><div class="top"><div class="q">Nenápadná záplata na zádi auta</div></div><div class="hint">O kolik se spletl odhad hloubky? ›</div>
+        <div class="a"><span class="pill bad">špatná vzdálenost</span><div class="big">&gt; 6 m</div><p>auto nalezeno v&nbsp;5,2 % snímků videa místo 90,7 % <span class="cite">Cheng 2022</span></p></div></div>
+    </div>
+    <div class="pg">8</div>
+  </section>
+
+  <!-- 9 oslepeni -->
+  <section class="slide" data-id="oslepeni">
+    <div class="kicker">3 · Co jsem zjistil · auto zmizí <span class="ask"><svg class="i"><use href="#i-hand"/></svg>při jaké intenzitě auto zmizí?</span></div>
+    <h2>Stačí světlo a&nbsp;auto před námi <em>zmizí</em></h2>
+    <div class="row grow">
+      <div class="col" style="flex:1.5">
+        <div class="imgbox"><img id="oslImg" src="media/oslepeni_00.jpg" alt="Snímek se simulovaným světlem"><div class="ovl" id="oslOvl"></div></div>
+        <div class="ix" style="margin-top:10px; display:flex; align-items:center; gap:16px">
+          <button class="btn ghost small" id="oslMinus" aria-label="méně světla">−</button>
+          <div style="flex:1"><input type="range" id="oslRange" min="0" max="13" step="1" value="0" aria-label="intenzita světla"><div class="ticks" id="oslTicks"></div></div>
+          <button class="btn ghost small" id="oslPlus" aria-label="více světla">+</button>
+          <button class="btn teal small" id="oslPlay">▶ přehrát</button>
+        </div>
+      </div>
+      <div class="col stack">
+        <div class="card" style="display:flex; align-items:baseline; gap:16px; padding:14px 22px"><span class="small muted">intenzita světla</span><span class="intval" id="oslVal">0,0</span></div>
+        <div class="status ok" id="oslStatus"><div class="t">Pojistka · auto před námi</div><div class="v" id="oslMain"></div><div class="s" id="oslMainS"></div></div>
+        <div class="card" style="padding:12px 20px"><p class="small" id="oslSide"></p></div>
+        <div class="ix swap" id="oslAnsWrap">
+          <button class="btn pre" id="oslAnswer" style="width:100%">Ukázat odpověď <span class="kbd">O</span></button>
+          <div class="answer-box ans"><p class="small"><b>Už při 0,4.</b> Auto samo je přesvětlené, auto vedle detektor pořád vidí. Žádná chyba se nehlásí, auto prostě chybí.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="pg">9</div>
+  </section>
+
+  <!-- 10 video -->
+  <section class="slide" data-id="video">
+    <div class="kicker">3 · Co jsem zjistil · auto zmizí</div>
+    <h2>Na celém záznamu: auto v&nbsp;pruhu mizí, <em>auto vedle zůstává</em></h2>
+    <div class="row grow">
+      <div class="col" style="flex:1.35">
+        <div class="photo"><video id="vid" class="ix" src="media/oslepeni.mp4" poster="media/oslepeni_poster.jpg" muted loop playsinline preload="auto"></video></div>
+        <div class="caption">10 s záznamu z&nbsp;CARLA, světlo na autě v&nbsp;pruhu sílí z&nbsp;0 na 0,6. Simulace v&nbsp;obraze, ne fyzikální laser.</div>
+      </div>
+      <div class="col stack" style="gap:14px">
+        <div class="card" style="padding:10px 14px 6px"><svg id="chartOsl" viewBox="0 0 640 330" width="100%" font-family="Segoe UI, Arial, sans-serif"></svg></div>
+        <div class="row" style="gap:14px">
+          <div class="col stat bad"><div class="num">10 %</div><div class="lbl">snímků s&nbsp;autem v&nbsp;pruhu při intenzitě 0,4</div></div>
+          <div class="col stat ok"><div class="num">20 z 20</div><div class="lbl">snímků s&nbsp;autem vedle při 0,4 i 0,6</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pg">10</div>
+  </section>
+
+  <!-- 11 tahni -->
+  <section class="slide" data-id="tahni">
+    <div class="kicker">3 · Co jsem zjistil · špatná vzdálenost <span class="ask"><svg class="i"><use href="#i-pointer"/></svg>zkuste to</span></div>
+    <h2>YOLO auto vidí, jen ho <em>špatně změří</em>. Pojistka pak nebrzdí.</h2>
+    <div class="row grow">
+      <div class="col" style="flex:1.3">
+        <div class="imgbox ix" id="dragWrap">
+          <img src="media/yolo_kviz.jpg" alt="Auto před námi, posuvná spodní hrana rámečku" draggable="false">
+          <div id="horizon"><span>horizont c<sub>y</sub> = 360 px</span></div>
+          <div id="dragBox"></div>
+          <div id="edge"><div class="grip">⇕ v = 447 px</div></div>
+        </div>
+        <div class="ix" style="margin-top:10px">
+          <p class="small" style="font-weight:700; margin-bottom:-2px">Posuňte spodní hranu rámečku</p>
+          <input type="range" id="vRange" min="372" max="560" step="1" value="447" aria-label="spodní hrana rámečku v pixelech">
+          <div class="rangelbl"><span>← výš = dál</span><span>níž = blíž →</span></div>
+          <div class="btns" style="justify-content:space-between; margin-top:8px">
+            <button class="btn ghost small" data-dv="-5">5 px výš</button>
+            <button class="btn ghost small" data-dv="-1">1 px výš</button>
+            <button class="btn teal small" data-reset>jak to našlo YOLO (447 px)</button>
+            <button class="btn ghost small" data-dv="1">1 px níž</button>
+            <button class="btn ghost small" data-dv="5">5 px níž</button>
+          </div>
+        </div>
+      </div>
+      <div class="col stack" style="gap:14px">
+        <div class="card" style="padding:16px 20px 8px">
+          <ol class="steps">
+            <li>YOLO auto <b>vidí</b>, ale spodní hranu rámečku nakreslí <b>výš</b> (chyba nebo útok).</li>
+            <li>Vzorec si myslí, že auto stojí blíž horizontu, tedy <b>dál</b>.</li>
+            <li>Vypočtený čas do srážky vyjde <b>delší</b>.</li>
+            <li>Pojistka si myslí, že má čas, a <b>nebrzdí</b>, i&nbsp;když auto vidí.</li>
+          </ol>
+        </div>
+        <div class="card live" id="liveCalc" style="padding:14px 20px"></div>
+        <div class="verdict ok" id="liveVerdict"></div>
+        <p class="xs muted">Čím dál auto je, tím víc stejný posun vadí: 10 px znamená +7 % ve 10 m, ale +37 % ve 40 m. YOLO bez narušení se v&nbsp;95 % snímků splete nejvýš o&nbsp;3,1 px.</p>
+      </div>
+    </div>
+    <div class="pg">11</div>
+  </section>
+
+  <!-- 12 hlasovani -->
+  <section class="slide" data-id="hlasovani">
+    <div class="kicker">3 · Co jsem zjistil · co to udělá s brzděním <span class="ask"><svg class="i"><use href="#i-hand"/></svg>hlasujte rukou</span></div>
+    <h2>Detekce na chvíli vypadne. <em>Zabrzdí auto včas?</em></h2>
+    <p class="small" style="margin:-10px 0 16px">50 km/h na stojící auto · brzdit má začít 20,8 m před ním · zastavit potřebuje 13,4 m</p>
+    <div class="votes ix" id="votes">
+      <div class="vote" data-dt="0.3"><div class="l">A</div><div class="s">výpadek 0,3 s</div><div class="r ok">zastaví<small>asi 3,2 m před autem</small></div></div>
+      <div class="vote" data-dt="0.7"><div class="l">B</div><div class="s">výpadek 0,7 s</div><div class="r bad">náraz asi 22 km/h<small>rezerva 0,53 s nestačí</small></div></div>
+      <div class="vote" data-dt="inf"><div class="l">C</div><div class="s">auto zmizí úplně</div><div class="r bad">náraz 50 km/h<small>pojistka vůbec nebrzdí</small></div></div>
+    </div>
+    <div class="card ix grow" style="margin-top:18px; padding:14px 22px 10px; display:flex; flex-direction:column; justify-content:center">
+      <div style="display:flex; align-items:center; gap:18px">
+        <span class="small" style="white-space:nowrap"><b>Délka výpadku:</b> <span id="dtVal" style="color:var(--accent-dk); font-weight:800">0,30 s</span></span>
+        <input type="range" id="dtRange" min="0" max="1.5" step="0.01" value="0.3" aria-label="délka výpadku detekce v sekundách">
+        <div class="verdict ok" id="dtVerdict" style="white-space:nowrap; min-width:330px; text-align:center">zastaví</div>
+      </div>
+      <svg id="road" viewBox="0 0 1400 200" width="100%" font-family="Segoe UI, Arial, sans-serif"></svg>
+      <div class="legend"><span><i style="background:#9aa3b0"></i>výpadek: jede dál bez brzdění</span><span><i style="background:#f57800"></i>zpoždění brzdy 0,1 s</span><span><i style="background:#0b8c89"></i>brzdění (zastaví)</span><span><i style="background:#d33a2c"></i>brzdění (nestihne)</span></div>
+    </div>
+    <div class="pg">12</div>
+  </section>
+
+  <!-- 13 senzory -->
+  <section class="slide" data-id="senzory">
+    <div class="kicker">4 · Jak se bránit</div>
+    <h2>Každý senzor vidí něco jiného. <em>Spolu vidí víc.</em></h2>
+    <div class="sens">
+      <div class="card"><div style="display:flex; align-items:center; gap:14px"><div class="ib acc"><svg class="i"><use href="#i-cam"/></svg></div><h3>Kamera</h3></div>
+        <p class="small">Barevný obraz: značky, semafory, pruhy.</p>
+        <p class="pm"><b>+</b> pozná, co to je &nbsp; <i>−</i> vzdálenost jen odhaduje</p></div>
+      <div class="card"><div style="display:flex; align-items:center; gap:14px"><div class="ib"><svg class="i"><use href="#i-lidar"/></svg></div><h3>LiDAR</h3></div>
+        <p class="small">Laserové pulzy: z&nbsp;doby letu odrazu změří vzdálenost.</p>
+        <p class="pm"><b>+</b> přesná vzdálenost &nbsp; <i>−</i> barvy nevidí</p></div>
+      <div class="card"><div style="display:flex; align-items:center; gap:14px"><div class="ib blue"><svg class="i"><use href="#i-radar"/></svg></div><h3>Radar</h3></div>
+        <p class="small">Rádiové vlny: vzdálenost i&nbsp;rychlost, i&nbsp;v&nbsp;dešti a&nbsp;mlze.</p>
+        <p class="pm"><b>+</b> rychlost, počasí &nbsp; <i>−</i> hrubý obraz</p></div>
+    </div>
+    <div class="row grow center" style="margin-top:18px; gap:28px">
+      <div class="col" style="flex:1.1">
+        <div class="card" style="padding:12px">
+          <div class="imgbox" style="box-shadow:none">
+            <img src="media/yolo_kviz.jpg" alt="Snímek z CARLA s obdélníkem YOLO a ilustračními body LiDARu">
+            <svg class="ovl" viewBox="0 0 800 450" preserveAspectRatio="none" font-family="Segoe UI, -apple-system, Arial, sans-serif">
+              <rect x="366" y="210" width="67" height="58" fill="none" stroke="#f57800" stroke-width="3"/>
+              <g fill="#d33a2c" stroke="#fff" stroke-width="1"><circle cx="378" cy="232" r="3.6"/><circle cx="392" cy="226" r="3.6"/><circle cx="406" cy="229" r="3.6"/><circle cx="420" cy="234" r="3.6"/><circle cx="384" cy="248" r="3.6"/><circle cx="399" cy="252" r="3.6"/><circle cx="414" cy="249" r="3.6"/><circle cx="426" cy="255" r="3.6"/></g>
+              <g fill="#0b8c89" stroke="#fff" stroke-width="1" opacity=".9"><circle cx="150" cy="330" r="3.4"/><circle cx="250" cy="318" r="3.4"/><circle cx="330" cy="310" r="3.4"/><circle cx="470" cy="312" r="3.4"/><circle cx="560" cy="322" r="3.4"/><circle cx="660" cy="335" r="3.4"/><circle cx="90" cy="400" r="3.4"/><circle cx="230" cy="385" r="3.4"/><circle cx="380" cy="378" r="3.4"/><circle cx="520" cy="384" r="3.4"/><circle cx="700" cy="404" r="3.4"/><circle cx="300" cy="286" r="3.4"/><circle cx="500" cy="288" r="3.4"/></g>
+              <rect x="436" y="150" width="356" height="76" rx="8" fill="#ffffffee"/>
+              <text x="448" y="182" font-size="23" font-weight="700" fill="#b85700">1 · obdélník z YOLO</text>
+              <text x="448" y="212" font-size="23" font-weight="700" fill="#d33a2c">2 · body LiDARu → vzdálenost</text>
+            </svg>
+          </div>
+          <div class="caption">Snímek z&nbsp;CARLA. Body LiDARu jsou jen ilustrační, data z&nbsp;LiDARu nemáme.</div>
+        </div>
+      </div>
+      <div class="col stack" style="gap:14px">
+        <h3 style="font-size:26px">Fúze s&nbsp;YOLO <span class="tag-ill">schéma</span></h3>
+        <p>YOLO řekne <b>co</b> to je, LiDAR <b>jak daleko</b>. Když si odporují, je to podezřelé.</p>
+        <div class="card" style="border-left:7px solid var(--accent); padding:14px 20px"><p class="small"><b>Moje diplomka LiDAR nemá</b>, je čistě kamerová.</p></div>
+      </div>
+    </div>
+    <div class="pg">13</div>
+  </section>
+
+  <!-- 14 fuze -->
+  <section class="slide" data-id="fuze">
+    <div class="kicker">4 · Jak se bránit <span class="ask"><svg class="i"><use href="#i-pointer"/></svg>co fúze zachytí?</span></div>
+    <h2>Fúze odhalí útok na jeden senzor, <em>ne na oba</em></h2>
+    <div class="row grow">
+      <div class="col" style="flex:1.12">
+        <div class="card" style="padding:10px; position:relative">
+          <span class="tag-ill" style="position:absolute; left:20px; top:18px; z-index:2">schéma · pohled shora</span>
+          <svg id="fuseSvg" viewBox="0 0 820 590" width="100%" font-family="Segoe UI, Arial, sans-serif"></svg>
+        </div>
+      </div>
+      <div class="col stack" style="gap:14px">
+        <div class="modes ix" id="modes">
+          <button class="btn sel" data-m="ok">Bez útoku</button>
+          <button class="btn ghost" data-m="cam">Útok na kameru</button>
+          <button class="btn ghost" data-m="lidar">Útok na LiDAR</button>
+          <button class="btn ghost" data-m="both">Útok na obojí</button>
+        </div>
+        <div class="card" style="padding:8px 20px">
+          <div class="srow"><span class="k">Kamera + YOLO</span><span class="val" id="fCam"></span></div>
+          <div class="srow"><span class="k">LiDAR</span><span class="val" id="fLid"></span></div>
+          <div class="srow" style="border:none"><span class="k">Fúze</span><span class="val" id="fFus"></span></div>
+        </div>
+        <div class="verdict ok" id="fVerdict"></div>
+        <p class="xs muted" id="fSrc"></p>
+        <table class="t ans" id="fSum">
+          <tr><th>útok na</th><th>kamera + LiDAR</th><th>jen kamera</th></tr>
+          <tr><td>kameru</td><td class="ok-t"><b>zachytí</b></td><td class="bad-t"><b>nezachytí</b></td></tr>
+          <tr><td>LiDAR</td><td class="ok-t"><b>zachytí</b></td><td class="muted">–</td></tr>
+          <tr><td>oba</td><td class="bad-t"><b>nezachytí</b></td><td class="bad-t"><b>nezachytí</b></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="pg">14</div>
+  </section>
+
+  <!-- 15 obrana -->
+  <section class="slide" data-id="obrana">
+    <div class="kicker">4 · Jak se bránit</div>
+    <h2>Opravit jen model nestačí. <em>Hlídat musí celé auto.</em></h2>
+    <div class="grow vc">
+    <div class="row" style="gap:22px">
+      <div class="col card">
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px"><div class="ib sm blue"><svg class="i"><use href="#i-chip"/></svg></div><h3 style="margin:0">Uvnitř modelu: pomáhá jen zčásti</h3></div>
+        <p class="small" style="margin-bottom:8px">• trénink na útocích stojí přesnost i&nbsp;výkon</p>
+        <p class="small" style="margin-bottom:8px">• záruka odolnosti jen pro malé změny obrazu</p>
+        <p class="small" style="margin-bottom:8px">• 6 z&nbsp;9 nových obran bylo obejito úplně</p>
+      </div>
+      <div class="col card" style="border:2px solid var(--ok)">
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px"><div class="ib sm ok"><svg class="i"><use href="#i-car"/></svg></div><h3 style="margin:0">Na úrovni celého auta: účinnější</h3></div>
+        <p class="small" style="margin-bottom:8px">• víc senzorů a&nbsp;jejich porovnání (fúze)</p>
+        <p class="small" style="margin-bottom:8px">• sledování v&nbsp;čase: útok jen na detektor by musel vyjít ve víc než 98 % snímků</p>
+        <p class="small" style="margin-bottom:8px">• jednoduchý nezávislý hlídač</p>
+      </div>
+    </div>
+    <p class="small muted" style="margin:26px 0 12px; font-weight:700">Co na to předpisy:</p>
+    <div class="reg">
+      <div><b>UN R155</b><span>kybernetická bezpečnost aut je povinná. Útoky na AI výslovně nezmiňuje.</span></div>
+      <div><b>UN R156</b><span>bezpečné aktualizace softwaru, třeba nového modelu</span></div>
+      <div><b>ISO/SAE 21434</b><span>analýza hrozeb a&nbsp;rizik (TARA)</span></div>
+      <div><b>ISO/PAS 8800</b><span>AI ve vozidlech, ale safety, ne útoky</span></div>
+    </div>
+    </div>
+    <div class="pg">15</div>
+  </section>
+
+  <!-- 16 doporuceni -->
+  <section class="slide" data-id="doporuceni">
+    <div class="kicker">4 · Jak se bránit · co si beru do diplomky</div>
+    <h2>Čtyři problémy, <em>čtyři řešení</em></h2>
+    <div class="pairs grow" style="align-content:center">
+      <div class="hd">problém</div><div></div><div class="hd">řešení v&nbsp;pojistce</div>
+      <div class="pb"><div class="ib sm bad"><svg class="i"><use href="#i-eyeoff"/></svg></div><p><b>Auto na pár snímků zmizí</b>světlo, nálepka, výpadek</p></div>
+      <div class="ar"><svg class="i" style="width:34px;height:34px"><use href="#i-arrow"/></svg></div>
+      <div class="rs"><div class="ib sm ok"><svg class="i"><use href="#i-track"/></svg></div><p><b>Auto chvíli „držet“</b>Kalmanův filtr ho předpovídá, nezahodí ho po prvním chybějícím snímku</p></div>
+      <div class="pb"><div class="ib sm bad"><svg class="i"><use href="#i-distq"/></svg></div><p><b>Podvržená vzdálenost</b>posunutý obdélník</p></div>
+      <div class="ar"><svg class="i" style="width:34px;height:34px"><use href="#i-arrow"/></svg></div>
+      <div class="rs"><div class="ib sm ok"><svg class="i"><use href="#i-compare"/></svg></div><p><b>Dva odhady vzdálenosti</b>z&nbsp;roviny silnice a&nbsp;z&nbsp;výšky obdélníku. Velký rozdíl = podezřelé.</p></div>
+      <div class="pb"><div class="ib sm bad"><svg class="i"><use href="#i-sun"/></svg></div><p><b>Oslepená kamera</b>přesvětlený snímek</p></div>
+      <div class="ar"><svg class="i" style="width:34px;height:34px"><use href="#i-arrow"/></svg></div>
+      <div class="rs"><div class="ib sm ok"><svg class="i"><use href="#i-alert"/></svg></div><p><b>Výpadek není volná silnice</b>hlásit poruchu kamery a&nbsp;opatrně zpomalit</p></div>
+      <div class="pb"><div class="ib sm bad"><svg class="i"><use href="#i-flask"/></svg></div><p><b>Testy jen s&nbsp;čistým obrazem</b>slabiny se neukážou</p></div>
+      <div class="ar"><svg class="i" style="width:34px;height:34px"><use href="#i-arrow"/></svg></div>
+      <div class="rs"><div class="ib sm ok"><svg class="i"><use href="#i-shield"/></svg></div><p><b>Testovat i&nbsp;s&nbsp;narušeným obrazem</b>pojistku zkoušet i&nbsp;se simulovaným oslepením</p></div>
+    </div>
+    <div class="pg">16</div>
+  </section>
+
+  <!-- 17 zaver -->
+  <section class="slide" data-id="zaver">
+    <div class="kicker">Shrnutí</div>
+    <h2>Co si odnést</h2>
+    <div class="grow vc">
+      <div class="row" style="gap:20px">
+        <div class="col threat"><div class="ib bad"><svg class="i"><use href="#i-eyeoff"/></svg></div><h3>Problém</h3><p>Pojistka věří kameře a&nbsp;kameru jde ošálit, i&nbsp;u&nbsp;sériových aut.</p></div>
+        <div class="col threat"><div class="ib acc"><svg class="i"><use href="#i-sun"/></svg></div><h3>Měření</h3><p>Bez narušení 300/300 snímků, chyba způsobená detektorem 2,5 %. Se světlem auto zmizí už při 0,4.</p></div>
+        <div class="col threat"><div class="ib bad"><svg class="i"><use href="#i-clock"/></svg></div><h3>Nebezpečí</h3><p>Výpadek detekce delší než 0,53 s při 50 km/h znamená srážku.</p></div>
+        <div class="col threat"><div class="ib ok"><svg class="i"><use href="#i-shield"/></svg></div><h3>Řešení</h3><p>Sledovat v&nbsp;čase, kontrolovat věrohodnost, výpadek brát jako poruchu.</p></div>
+      </div>
+      <div class="card" style="border-left:7px solid var(--teal); padding:18px 24px; margin-top:28px"><p><b>Do diskuse:</b> Má auto při výpadku kamery raději zabrzdit, i&nbsp;když to může být planý poplach?</p></div>
+    </div>
+    <div class="pg">17</div>
+  </section>
+
+  <!-- 18 zdroje -->
+  <section class="slide" data-id="zdroje">
+    <div class="kicker">Zdroje</div>
+    <h2 style="font-size:36px; margin-bottom:18px">Literatura a&nbsp;předpisy použité v&nbsp;prezentaci</h2>
+    <div class="refs">
+      <p>ATHALYE, A., CARLINI, N., WAGNER, D. Obfuscated Gradients Give a False Sense of Security. <i>ICML</i>, 2018.</p>
+      <p>CAO, Y. a kol. Invisible for both Camera and LiDAR: Security of Multi-Sensor Fusion based Perception. <i>IEEE S&amp;P</i>, 2021.</p>
+      <p>CHENG, Z. a kol. Physical Attack on Monocular Depth Estimation with Optimal Adversarial Patches. <i>ECCV</i>, 2022.</p>
+      <p>COHEN, J., ROSENFELD, E., KOLTER, Z. Certified Adversarial Robustness via Randomized Smoothing. <i>ICML</i>, 2019.</p>
+      <p>DEDE, G. a kol. Cybersecurity Challenges in the Uptake of Artificial Intelligence in Autonomous Driving. <i>ENISA/JRC</i>, 2021.</p>
+      <p>DOSOVITSKIY, A. a kol. CARLA: An Open Urban Driving Simulator. <i>CoRL</i>, 2017.</p>
+      <p>EYKHOLT, K. a kol. Robust Physical-World Attacks on Deep Learning Visual Classification. <i>CVPR</i>, 2018. (obrázek značky STOP převzat)</p>
+      <p>ISO/SAE 21434:2021 Road vehicles – Cybersecurity engineering. ISO/PAS 8800:2024 Road vehicles – Safety and artificial intelligence.</p>
+      <p>JIA, Y. a kol. Fooling Detection Alone is Not Enough: Adversarial Attack against Multiple Object Tracking. <i>ICLR</i>, 2020.</p>
+      <p>JOCHER, G., QIU, J. Ultralytics YOLO11 [software]. 2024.</p>
+      <p>KALMAN, R. E. A New Approach to Linear Filtering and Prediction Problems. <i>J. Basic Engineering</i>, 1960.</p>
+      <p>LEE, D. N. A Theory of Visual Control of Braking Based on Information about Time-to-Collision. <i>Perception</i>, 1976.</p>
+      <p>MADRY, A. a kol. Towards Deep Learning Models Resistant to Adversarial Attacks. <i>ICLR</i>, 2018.</p>
+      <p>NASSI, B. a kol. Phantom of the ADAS: Securing Advanced Driver-Assistance Systems from Split-Second Phantom Attacks. <i>ACM CCS</i>, 2020.</p>
+      <p>PAPERNOT, N. a kol. Practical Black-Box Attacks against Machine Learning. <i>ASIA CCS</i>, 2017.</p>
+      <p>PETIT, J. a kol. Remote Attacks on Automated Vehicles Sensors: Experiments on Camera and LiDAR. <i>Black Hat Europe</i>, 2015.</p>
+      <p>SHA, L. Using Simplicity to Control Complexity. <i>IEEE Software</i>, 2001.</p>
+      <p>SHOSTACK, A. Threat Modeling: Designing for Security. Wiley, 2014.</p>
+      <p>STEIN, G. P., MANO, O., SHASHUA, A. Vision-based ACC with a Single Camera: Bounds on Range and Range Rate Accuracy. <i>IEEE IV</i>, 2003.</p>
+      <p>TENCENT KEEN SECURITY LAB. Experimental Security Research of Tesla Autopilot. 2019.</p>
+      <p>THYS, S., VAN RANST, W., GOEDEMÉ, T. Fooling Automated Surveillance Cameras: Adversarial Patches to Attack Person Detection. <i>CVPRW</i>, 2019.</p>
+      <p>UNECE. UN Regulation No 155 (kybernetická bezpečnost) a No 156 (aktualizace softwaru). 2021.</p>
+      <p>VASSILEV, A. a kol. Adversarial Machine Learning: A Taxonomy and Terminology. <i>NIST AI 100-2 E2025</i>, 2025.</p>
+      <p>YAN, C., XU, W., LIU, J. Can You Trust Autonomous Vehicles: Contactless Attacks against Sensors of Self-driving Vehicle. <i>DEF CON 24</i>, 2016.</p>
+      <p>YEONG, D. J. a kol. Sensor and Sensor Fusion Technology in Autonomous Vehicles: A Review. <i>Sensors</i>, 2021.</p>
+      <p>Vlastní měření: snímky ze simulátoru CARLA, YOLO11m, skripty <i>demo/mereni.py</i> a <i>demo/snimky_pro_prezentaci.py</i>. Mlha na slidu 2 je simulovaná úpravou snímku (<i>demo/mlha_pro_prezentaci.py</i>).</p>
+    </div>
+    <div class="pg">18</div>
+  </section>
+
+  <!-- 19 dekuji -->
+  <section class="slide" data-id="dekuji">
+    <div class="grow vc" style="align-items:center; text-align:center">
+      <div style="font-size:96px; font-weight:800; color:var(--text); line-height:1.05">Děkuji za pozornost</div>
+      <div class="bar" style="margin: 34px auto 30px; width:160px"></div>
+      <div style="font-size:40px; color:var(--accent-dk); font-weight:700">prostor pro otázky</div>
+    </div>
+  </section>
+
+  <!-- 20 titul-konec -->
+  <section class="slide title-slide" data-id="titul-konec">
+    <div class="title-left">
+      <div class="kicker">Semestrální práce · AP9BI</div>
+      <h1>Zranitelnost kamerové percepce autonomních vozidel vůči útokům a&nbsp;možnosti <em>obrany</em></h1>
+      <div class="bar"></div>
+      <div class="title-meta">
+        <strong>Bc. Libor Výleta</strong><br>
+        Bezpečnost informačních systémů (AP9BI)<br>
+        <span class="muted">Univerzita Tomáše Bati ve Zlíně · Fakulta aplikované informatiky · 2026</span>
+      </div>
+      <div class="story"><span>1 jak auto vidí</span><span>2 co umí útočník</span><span>3 co jsem zjistil</span><span>4 jak se bránit</span></div>
+      <img class="logo" src="media/logo_utb_cz.png" alt="Univerzita Tomáše Bati ve Zlíně">
+    </div>
+    <div class="title-right"><img src="media/titul_den.jpg" alt="Vozidlo v simulátoru CARLA, pohled z dronu"></div>
+  </section>
+
+</div>
+<div id="counter"></div>
+<div id="focusTip" role="status">Klávesy teď ovládá prohlížeč. Klikněte kamkoli do prezentace (slide se tím nepřepne).</div>
+<div id="hint">← → nebo tlačítka vpravo dole listovat · O odhalit · F celá obrazovka</div>
+<div id="nav" aria-label="Ovládání prezentace">
+  <button id="navPrev" type="button" aria-label="Předchozí slide" title="Předchozí slide (←)"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <span id="navNum"></span>
+  <button id="navNext" type="button" aria-label="Další slide" title="Další slide (→)"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  /* Předem spočítané detekce (demo/snimky_pro_prezentaci.py) */
+  const DATA = {"kviz":[["pred_nami",0.846,366.4,209.8,432.6,267.5,16.83],["vedle",0.839,461.8,202.7,538.6,254.4,19.79],["",0.466,124.3,187.9,169.8,203.4,62.85]],"osl":[[0.0,"media/oslepeni_00.jpg",[["pred_nami",0.846,366.4,209.8,432.6,267.5,16.83],["vedle",0.839,461.8,202.7,538.6,254.4,19.79],["",0.466,124.3,187.9,169.8,203.4,62.85]]],[0.1,"media/oslepeni_01.jpg",[["pred_nami",0.844,366.7,210.2,432.8,267.5,16.83],["vedle",0.835,462.0,202.9,538.6,254.3,19.8],["",0.469,124.3,187.8,169.9,203.4,62.89]]],[0.2,"media/oslepeni_02.jpg",[["pred_nami",0.838,366.2,211.3,432.8,267.4,16.85],["vedle",0.834,462.2,204.0,539.1,254.3,19.82],["",0.478,124.3,187.6,169.9,203.4,62.93]]],[0.3,"media/oslepeni_03.jpg",[["vedle",0.825,463.5,204.6,539.4,254.7,19.72],["pred_nami",0.636,368.0,226.7,432.0,268.1,16.71],["",0.481,124.2,187.3,170.1,203.4,62.83]]],[0.4,"media/oslepeni_04.jpg",[["vedle",0.811,463.7,204.2,538.8,254.2,19.83],["",0.456,124.3,187.3,170.4,203.5,62.68]]],[0.5,"media/oslepeni_05.jpg",[["vedle",0.657,465.3,204.4,539.5,254.2,19.84],["",0.455,124.3,187.4,170.6,203.5,62.71]]],[0.6,"media/oslepeni_06.jpg",[["vedle",0.704,474.7,205.9,539.3,254.0,19.88],["",0.476,124.6,187.8,170.6,203.5,62.51]]],[0.7,"media/oslepeni_07.jpg",[["",0.444,124.6,187.9,170.7,203.6,62.35],["vedle",0.378,479.9,214.0,538.6,253.9,19.91]]],[0.8,"media/oslepeni_08.jpg",[["vedle",0.463,480.4,184.8,538.1,253.9,19.93],["",0.395,126.1,188.2,170.6,203.6,62.32]]],[0.9,"media/oslepeni_09.jpg",[["",0.37,128.5,188.8,170.2,203.9,61.54]]],[1.0,"media/oslepeni_10.jpg",[["",0.329,129.5,189.8,169.9,203.7,62.08]]],[1.1,"media/oslepeni_11.jpg",[]],[1.2,"media/oslepeni_12.jpg",[]],[1.3,"media/oslepeni_13.jpg",[]]],"uvod":[["chodec",0.866,437.4,483.8,501.8,625.5],["auto",0.519,329.1,353.9,375.9,378.4],["auto",0.481,278.4,354.2,329.1,380.2]]};
+  const VW = 800, VH = 450, VX = 240, VY = 180;
+  const F = 640, HCAM = 2.3, CY = 360;
+  const V = 50 / 3.6, LAT = 0.1, DEC = 8, T = 1.5;
+  const STOP = V * LAT + V * V / (2 * DEC);   // 13,45 m
+  const BRZDI = T * V;                        // 20,83 m
+
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+  const fmt = (x, n) => x.toFixed(n).replace('.', ',').replace('-', '−');
+
+  function narazova(dK) {            // demo/mereni.py: narazova_rychlost [km/h]
+    const dBr = dK - V * LAT;
+    if (dBr <= 0) return V * 3.6;
+    const v2 = V * V - 2 * DEC * dBr;
+    return v2 > 0 ? Math.sqrt(v2) * 3.6 : 0;
+  }
+  function drawBoxes(el, dets) {
+    el.innerHTML = dets.map(([kdo, conf, x1, y1, x2, y2, d]) => {
+      const cls = kdo === 'pred_nami' ? 'b-main' : kdo === 'vedle' ? 'b-side' : 'b-far';
+      return `<div class="bx ${cls}" style="left:${x1 / VW * 100}%;top:${y1 / VH * 100}%;width:${(x2 - x1) / VW * 100}%;height:${(y2 - y1) / VH * 100}%"><span>auto ${fmt(conf, 2)} · ${fmt(d, 1)} m</span></div>`;
+    }).join('');
+  }
+
+  /* jednoduchý čárový graf v SVG (stejná čísla jako grafy z mereni.py) */
+  function lineChart(svg, o) {
+    const W = o.w, H = o.h, L = o.l || 64, R = 16, TP = 14, B = 58;
+    const X = x => L + (x - o.xmin) / (o.xmax - o.xmin) * (W - L - R);
+    const Y = y => TP + (1 - (y - o.ymin) / (o.ymax - o.ymin)) * (H - TP - B);
+    let g = '';
+    if (o.band) g += `<rect x="${X(o.band[0])}" y="${TP}" width="${X(o.band[1]) - X(o.band[0])}" height="${H - TP - B}" fill="#9aa3b0" opacity=".22"/>`;
+    o.yticks.forEach(t => g += `<line x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}" stroke="#ece4d8"/><text x="${L - 10}" y="${Y(t) + 5}" font-size="15" text-anchor="end" fill="#5b6676">${o.yfmt(t)}</text>`);
+    o.xticks.forEach(t => g += `<text x="${X(t)}" y="${H - B + 24}" font-size="15" text-anchor="middle" fill="#5b6676">${o.xfmt(t)}</text>`);
+    g += `<line x1="${L}" x2="${W - R}" y1="${Y(o.ymin)}" y2="${Y(o.ymin)}" stroke="#8b8172" stroke-width="1.5"/>`;
+    g += `<text x="${(L + W - R) / 2}" y="${H - 8}" font-size="16" text-anchor="middle" fill="#1e2935" font-weight="700">${o.xlabel}</text>`;
+    g += `<text transform="translate(16 ${(TP + H - B) / 2}) rotate(-90)" font-size="16" text-anchor="middle" fill="#1e2935" font-weight="700">${o.ylabel}</text>`;
+    o.series.forEach(s => {
+      const pts = s.pts.filter(p => p[1] <= o.ymax + 1e-9);
+      g += `<polyline points="${pts.map(p => X(p[0]) + ',' + Y(p[1])).join(' ')}" fill="none" stroke="${s.color}" stroke-width="${s.w || 4}" stroke-linejoin="round" ${s.dash ? 'stroke-dasharray="' + s.dash + '"' : ''}/>`;
+      if (s.dots) pts.forEach(p => g += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="6" fill="${s.color}" stroke="#fff" stroke-width="2"/>`);
+      if (s.label) { const p = s.labelAt; g += `<text x="${X(p[0])}" y="${Y(p[1])}" font-size="16" font-weight="800" fill="${s.color}" text-anchor="${p[2] || 'start'}">${s.label}</text>`; }
+    });
+    svg.innerHTML = g;
+  }
+
+  // graf oslepení (VYSLEDKY.md, odd. 2: 20 snímků, světlo na autě v pruhu)
+  const I7 = [0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.3];
+  lineChart($('#chartOsl'), {
+    w: 640, h: 330, l: 82, xmin: 0, xmax: 1.3, ymin: 0, ymax: 100,
+    xticks: I7, yticks: [0, 25, 50, 75, 100], xfmt: t => fmt(t, 1), yfmt: t => t + ' %',
+    xlabel: 'intenzita světla na autě v pruhu', ylabel: 'snímky s detekcí',
+    series: [
+      { color: '#0b8c89', dots: true, pts: I7.map((x, i) => [x, [100, 100, 100, 100, 30, 0, 0][i]]), label: 'auto vedle', labelAt: [0.66, 88] },
+      { color: '#d33a2c', dots: true, pts: I7.map((x, i) => [x, [100, 100, 10, 0, 0, 0, 0][i]]), label: 'auto v pruhu', labelAt: [0.44, 22] }
+    ]
+  });
+  const C = {};   // ovladače interaktivních slidů: solve() = vyřešený stav
+
+  /* 2 – úvodní snímek s detekcemi */
+  $('#uvodOvl').innerHTML = DATA.uvod.map(([k, conf, x1, y1, x2, y2]) =>
+    `<div class="bx ${k === 'chodec' ? 'b-person' : (x1 < 300 ? 'b-side b-below' : 'b-side')}" style="left:${x1 / 12.8}%;top:${y1 / 7.2}%;width:${(x2 - x1) / 12.8}%;height:${(y2 - y1) / 7.2}%"><span>${k} ${fmt(conf, 2)}</span></div>`).join('');
+
+  /* 4 – Kolik aut vidí YOLO */
+  (function () {
+    const s = $('[data-id="kviz-yolo"]'), ovl = $('#yoloOvl');
+    drawBoxes(ovl, DATA.kviz);
+    ovl.insertAdjacentHTML('beforeend', `<div class="miss" style="left:${(404 - VX) / VW * 100}%;top:${(358 - VY) / VH * 100}%;width:${58 / VW * 100}%;height:${36 / VH * 100}%"><span>nenašlo</span></div>`);
+    $$('#tips .btn').forEach(b => b.addEventListener('click', () => { $$('#tips .btn').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); }));
+    const reveal = () => { s.classList.add('shown'); $('#yoloReveal').textContent = 'YOLO našlo 3 auta'; };
+    $('#yoloReveal').addEventListener('click', reveal);
+    $('#yoloImg').addEventListener('click', reveal);
+    C['kviz-yolo'] = { solve: reveal };
+  })();
+
+  /* 5 – zvýraznění veličin: klik na písmeno ve vzorci, v tabulce i v obrázku */
+  (function () {
+    const s = $('[data-id="vzorec"]'), info = $('#symInfo'), svg = $('#geoSvg');
+    const DEF = info.innerHTML;
+    const TXT = {
+      f: '<b>f</b> – ohnisková vzdálenost v pixelech, tedy jak daleko je snímač od objektivu. Plyne ze šířky snímku a zorného úhlu: 1280 / (2 · tan 45°) = 640 px.',
+      h: '<b>H</b> – výška kamery nad silnicí. Kamera je na držáku nad střechou ve výšce 2,3 m, známe ji z montáže.',
+      v: '<b>v</b> – řádek snímku, kde YOLO nakreslilo spodní hranu obdélníku, tedy kde kola auta stojí na silnici. Počítá se shora, tady 447 px.',
+      cy: '<b>c<sub>y</sub></b> – řádek středu snímku. Kamera míří vodorovně, takže tento řádek je horizont: 360 px (polovina ze 720).',
+      d: '<b>d</b> – hledaná vzdálenost k místu, kde kola auta stojí na silnici. Čím níž auto v obraze stojí, tím je blíž: 640 · 2,3 / 87 ≈ 16,9 m.'
+    };
+    let cur = null;
+    function hl(k) {
+      cur = (k && k !== cur) ? k : null;
+      $$('.sym, .symt', s).forEach(e => e.classList.toggle('on', e.dataset.k === cur));
+      $$('table.q tr', s).forEach(r => r.classList.toggle('on', r.dataset.k === cur));
+      $$('#geoSvg [data-k]').forEach(e => e.classList.toggle('hl', e.dataset.k === cur));
+      info.innerHTML = cur ? TXT[cur] : DEF;
+      info.classList.toggle('on', !!cur);
+    }
+    // tenké čáry v obrázku dostanou širší neviditelnou plochu pro klik
+    $$('#geoSvg line[data-k]').forEach(l => {
+      const h = l.cloneNode(false);
+      h.setAttribute('data-hit', l.dataset.k); h.removeAttribute('data-k');
+      h.setAttribute('stroke', '#000'); h.setAttribute('stroke-opacity', '0');
+      h.setAttribute('stroke-width', '22'); h.removeAttribute('stroke-dasharray');
+      h.setAttribute('pointer-events', 'stroke');
+      svg.appendChild(h);
+    });
+    // jeden posluchač pro celý slide: klik na písmeno zvýrazní, klik jinam zvýraznění zruší
+    s.addEventListener('click', e => {
+      const t = e.target.closest ? e.target.closest('[data-k], [data-hit]') : null;
+      if (t && s.contains(t)) hl(t.dataset.k || t.getAttribute('data-hit'));
+      else if (cur) hl(null);
+    });
+    C['vzorec'] = { solve: () => { if (!cur) hl('d'); } };
+  })();
+
+  /* 6 – tahání spodní hrany */
+  (function () {
+    const wrap = $('#dragWrap'), edge = $('#edge'), box = $('#dragBox'), rng = $('#vRange');
+    const REF = 447, TOP = 389.8, X1 = 606.4, X2 = 672.6;
+    const dRef = F * HCAM / (REF - CY);
+    $('#horizon').style.top = ((CY - VY) / VH * 100) + '%';
+    let v = REF;
+    function set(nv) {
+      v = Math.max(372, Math.min(560, Math.round(nv)));
+      rng.value = v;
+      edge.style.top = ((v - VY) / VH * 100) + '%';
+      $('.grip', edge).textContent = '⇕ v = ' + v + ' px';
+      Object.assign(box.style, { left: ((X1 - VX) / VW * 100) + '%', width: ((X2 - X1) / VW * 100) + '%', top: ((TOP - VY) / VH * 100) + '%', height: (Math.max(0, v - TOP) / VH * 100) + '%' });
+      const dv = v - CY, d = F * HCAM / dv, ttc = d / V, shift = REF - v;
+      $('#liveCalc').innerHTML =
+        `<b>d</b> = 640 · 2,3 / (${v} − 360) = <b style="color:var(--accent-dk)">${fmt(d, 1)} m</b><br>` +
+        `<b>TTC</b> = ${fmt(d, 1)} / 13,9 = <b>${fmt(ttc, 2)} s</b>` +
+        `<span style="font-size:18px; display:block; color:var(--muted)">hrana ${shift === 0 ? 'tam, kde ji nakreslilo YOLO' : (shift > 0 ? shift + ' px výš než u YOLO' : (-shift) + ' px níž než u YOLO')} · skutečně je auto ${fmt(dRef, 1)} m daleko</span>`;
+      const vd = $('#liveVerdict');
+      if (ttc < T) { vd.className = 'verdict ok'; vd.innerHTML = `TTC ${fmt(ttc, 2)} s je pod 1,5 s → pojistka BRZDÍ<small>${shift > 0 ? 'Odhad je trochu delší, ale pořád včas.' : 'Auto je blízko, brzdí správně.'}</small>`; }
+      else { vd.className = 'verdict bad'; vd.innerHTML = `TTC ${fmt(ttc, 2)} s ≥ 1,5 s → pojistka NEBRZDÍ<small>Auto vidí, ale myslí si, že je ${fmt(d, 1)} m daleko. Ve skutečnosti je ${fmt(dRef, 1)} m.</small>`; }
+    }
+    function fromPointer(e) { const r = wrap.getBoundingClientRect(); set(VY + (e.clientY - r.top) / r.height * VH); }
+    let drag = false;
+    wrap.addEventListener('pointerdown', e => { drag = true; try { wrap.setPointerCapture(e.pointerId); } catch (x) {} fromPointer(e); e.preventDefault(); });
+    wrap.addEventListener('pointermove', e => { if (drag) fromPointer(e); });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => wrap.addEventListener(t, () => { drag = false; }));
+    rng.addEventListener('input', () => set(+rng.value));
+    $$('[data-id="tahni"] [data-dv]').forEach(b => b.addEventListener('click', () => set(v + +b.dataset.dv)));
+    $('[data-id="tahni"] [data-reset]').addEventListener('click', () => set(REF));
+    set(REF);
+    C['tahni'] = { solve() { set(REF - 20); } };
+  })();
+
+  /* 9 – kvíz z literatury */
+  (function () {
+    const cards = $$('#quiz .qcard');
+    cards.forEach(c => c.addEventListener('click', () => c.classList.toggle('shown')));
+    C['kviz-lit'] = { solve() { cards.forEach(c => c.classList.add('shown')); } };
+  })();
+
+  /* 10 – posuvník oslepení */
+  (function () {
+    const rng = $('#oslRange'), img = $('#oslImg'), ovl = $('#oslOvl');
+    DATA.osl.forEach(o => { const i = new Image(); i.src = o[1]; });
+    $('#oslTicks').innerHTML = [0, 2, 4, 6, 8, 10, 13].map(k => `<span style="left:calc(19px + (100% - 38px) * ${k / 13})">${fmt(DATA.osl[k][0], 1)}</span>`).join('');
+    let timer = null;
+    function set(k) {
+      k = Math.max(0, Math.min(13, k)); rng.value = k;
+      const [I, src, dets] = DATA.osl[k];
+      img.src = src; drawBoxes(ovl, dets);
+      $('#oslVal').textContent = fmt(I, 1);
+      const main = dets.find(d => d[0] === 'pred_nami'), side = dets.find(d => d[0] === 'vedle');
+      const st = $('#oslStatus');
+      if (main) { st.className = 'status ok'; $('#oslMain').textContent = `vidí auto ${fmt(main[6], 1)} m`; $('#oslMainS').textContent = `jistota ${fmt(main[1], 2)} → může brzdit`; }
+      else { st.className = 'status bad'; $('#oslMain').textContent = 'NEVIDÍ auto → nebrzdí'; $('#oslMainS').textContent = 'žádná chyba se nehlásí (nad prahem 0,25 nic)'; }
+      $('#oslSide').innerHTML = side ? `<b>Auto vedle:</b> <span class="ok-t">vidí</span>, jistota ${fmt(side[1], 2)}` : `<b>Auto vedle:</b> <span class="bad-t">nevidí</span>, záře zasáhla i&nbsp;jeho`;
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; $('#oslPlay').textContent = '▶ přehrát'; } }
+    rng.addEventListener('input', () => { stop(); set(+rng.value); });
+    $('#oslMinus').addEventListener('click', () => { stop(); set(+rng.value - 1); });
+    $('#oslPlus').addEventListener('click', () => { stop(); set(+rng.value + 1); });
+    $('#oslPlay').addEventListener('click', () => {
+      if (timer) return stop();
+      let k = +rng.value >= 13 ? 0 : +rng.value; set(k);
+      $('#oslPlay').textContent = '❚❚ pauza';
+      timer = setInterval(() => { k++; if (k > 13) return stop(); set(k); }, 650);
+    });
+    const answer = () => { stop(); set(4); $('#oslAnsWrap').classList.add('shown'); };
+    $('#oslAnswer').addEventListener('click', answer);
+    set(0);
+    C['oslepeni'] = { solve: answer, leave: stop };
+  })();
+
+  /* 13 – hlasování a výpadek */
+  (function () {
+    const votes = $$('#votes .vote'), rng = $('#dtRange'), road = $('#road');
+    votes.forEach(v => v.addEventListener('click', () => { v.classList.add('shown'); if (v.dataset.dt !== 'inf') set(+v.dataset.dt); else set(1.5, true); }));
+    const X0 = 40, X1 = 1196, DMAX = 26;
+    const X = d => X0 + (DMAX - d) / DMAX * (X1 - X0);
+    function set(dt, gone) {
+      rng.value = dt;
+      const start = gone ? -1 : BRZDI - V * dt;
+      const imp = gone ? 50 : narazova(start);
+      const stopAt = start - STOP;
+      $('#dtVal').textContent = gone ? 'celou dobu' : fmt(dt, 2) + ' s';
+      const vd = $('#dtVerdict');
+      if (imp <= 0.05) { vd.className = 'verdict ok'; vd.textContent = `zastaví ${fmt(stopAt, 1)} m před autem`; }
+      else { vd.className = 'verdict bad'; vd.textContent = `náraz ${fmt(imp, 0)} km/h`; }
+      let g = '';
+      const GY = 150, CW = 186, CH = 66;                   // silnice, auto ve stejném měřítku jako jinde
+      g += `<rect x="0" y="${GY}" width="1400" height="50" fill="#ebe7e0"/><line x1="0" y1="${GY}" x2="1400" y2="${GY}" stroke="#8b8172" stroke-width="1.5"/>`;
+      // úseky jako kóty nad autem
+      const BY = 44;
+      if (!gone) {
+        if (dt > 0) g += `<line x1="${X(BRZDI)}" y1="${BY}" x2="${X(start)}" y2="${BY}" stroke="#9aa3b0" stroke-width="6"/>`;
+        const a = start, b = Math.max(0, start - V * LAT), c = Math.max(0, stopAt);
+        g += `<line x1="${X(a)}" y1="${BY}" x2="${X(b)}" y2="${BY}" stroke="#f57800" stroke-width="6"/>`;
+        g += `<line x1="${X(b)}" y1="${BY}" x2="${X(c)}" y2="${BY}" stroke="${imp > 0.05 ? '#d33a2c' : '#0b8c89'}" stroke-width="6"/>`;
+      } else {
+        g += `<line x1="${X(DMAX)}" y1="${BY}" x2="${X(0)}" y2="${BY}" stroke="#9aa3b0" stroke-width="6"/><text x="${X(13)}" y="${BY - 12}" font-size="18" text-anchor="middle" fill="#d33a2c" font-weight="700">auto pro pojistku neexistuje, jede dál plnou rychlostí</text>`;
+      }
+      g += `<line x1="${X(BRZDI)}" y1="14" x2="${X(BRZDI)}" y2="${GY + 4}" stroke="#f57800" stroke-width="2" stroke-dasharray="6 4"/>`;
+      if (!gone) g += `<text x="${X(BRZDI) + 8}" y="24" font-size="16" fill="#b85700" font-weight="700">má začít brzdit (20,8 m)</text>`;
+      g += `<path d="M${X(STOP)} 56 v${GY - 56}" stroke="#1f8f45" stroke-width="1.5" stroke-dasharray="3 4"/><text x="${X(STOP) + 6}" y="70" font-size="14" fill="#1f8f45" font-weight="700">nejpozději (13,4 m)</text>`;
+      // stojící auto a naše auto (siluety)
+      g += `<use href="#car-side" x="${X(0)}" y="${GY - CH + 0.5}" width="${CW}" height="${CH}" style="color:#f4d2b1; --cs:#a85a12"/>`;
+      const crash = imp > 0.05, egoD = crash ? 0 : Math.max(0, stopAt);
+      g += `<use href="#car-side" x="${X(egoD) - CW - 2}" y="${GY - CH + 0.5}" width="${CW}" height="${CH}" style="color:#d6dee7; --cs:#4a5a6c"/>`;
+      if (crash) g += `<text x="${X(0) - 4}" y="${GY - CH - 8}" font-size="22" text-anchor="end" fill="#d33a2c" font-weight="800">náraz ${fmt(imp, 0)} km/h</text>`;
+      for (let d = 5; d <= 25; d += 5) g += `<line x1="${X(d)}" y1="${GY + 8}" x2="${X(d)}" y2="${GY + 14}" stroke="#a89c8a" stroke-width="2"/><text x="${X(d)}" y="${GY + 32}" font-size="14" text-anchor="middle" fill="#8a7c69">${d} m před autem</text>`;
+      road.innerHTML = g;
+    }
+    rng.addEventListener('input', () => set(+rng.value));
+    set(0.3);
+    C['hlasovani'] = { solve() { votes.forEach(v => v.classList.add('shown')); set(0.7); } };
+  })();
+
+  /* 15 – fúze pod útokem (schéma) */
+  (function () {
+    const svg = $('#fuseSvg');
+    const EX = 410, EY = 520, OBY = 250;
+    const NB = ' ';
+    const M = {
+      ok:    { cam: ['vidí auto, 17 m', 'ok-t'], lid: ['překážka 17 m', 'ok-t'], fus: ['oba souhlasí', 'ok-t'], v: ['ok', 'Auto potvrzené dvěma senzory → brzdí podle TTC'], src: 'Běžný stav: YOLO auto najde, body LiDARu v obdélníku dají vzdálenost.' },
+      cam:   { cam: ['oslepená, nic nevidí', 'bad-t'], lid: ['překážka 17 m', 'ok-t'], fus: ['nesoulad!', 'mid-t'], v: ['ok', 'Zachyceno: LiDAR překážku vidí → brzdit a hlásit poruchu kamery'], src: 'Oslepení kamery laserem a LED je doložené. Světlo do kamery LiDAR neovlivní.' },
+      lidar: { cam: ['vidí auto, 17 m', 'ok-t'], lid: ['auto + falešný objekt', 'mid-t'], fus: ['kamera fantom nepotvrdí', 'mid-t'], v: ['ok', 'Zachyceno: falešný objekt nemá oporu v obraze → nevěřit mu'], src: 'Podvržené ozvěny LiDARu vytvořily v laboratoři falešné objekty ve 20 a 50' + NB + 'm.' },
+      both:  { cam: ['nic nenašla', 'bad-t'], lid: ['nic nerozpoznal', 'bad-t'], fus: ['oba shodně: volno', 'bad-t'], v: ['bad', 'Útok projde: fúze nebrzdí a auto narazí'], src: 'Objekt neviditelný pro kameru i LiDAR: v simulaci úspěšnost přes 90' + NB + '%, vytištěný objekt 85–90' + NB + '%.' }
+    };
+    function car(x, y, fill, extra, st) {
+      st = st || '#4a5a6c';
+      return `<g ${extra || ''}><rect x="${x - 28}" y="${y - 56}" width="56" height="112" rx="16" fill="${fill}" stroke="${st}" stroke-width="1.6"/>` +
+        `<path d="M${x - 21},${y - 22} Q${x},${y - 32} ${x + 21},${y - 22} L${x + 18},${y - 6} L${x - 18},${y - 6} Z" fill="#e4ebf2" stroke="${st}" stroke-width="1"/>` +
+        `<path d="M${x - 18},${y + 30} L${x + 18},${y + 30} L${x + 20},${y + 42} Q${x},${y + 48} ${x - 20},${y + 42} Z" fill="#e4ebf2" stroke="${st}" stroke-width="1"/>` +
+        `<rect x="${x - 33}" y="${y - 20}" width="6" height="9" rx="2" fill="${st}"/><rect x="${x + 27}" y="${y - 20}" width="6" height="9" rx="2" fill="${st}"/></g>`;
+    }
+    let cur = 'ok';
+    function render(m) {
+      let g = `<rect width="820" height="590" fill="#eef1ea"/><rect x="250" y="0" width="320" height="590" fill="#d9d4cb"/>`;
+      g += `<line x1="410" y1="0" x2="410" y2="590" stroke="#fff" stroke-width="5" stroke-dasharray="30 22"/>`;
+      const L = 470, cone = `${EX},${EY - 40} ${EX - L * 0.707},${EY - 40 - L * 0.707} ${EX + L * 0.707},${EY - 40 - L * 0.707}`;
+      g += `<polygon points="${cone}" fill="${m === 'cam' ? '#bbbbbb44' : '#f5780030'}" stroke="#f57800" stroke-width="2" stroke-dasharray="8 6"/>`;
+      g += `<text x="${EX + 150}" y="${EY - 250}" font-size="18" fill="#b85700" font-weight="700">zorné pole kamery</text>`;
+      const hits = [], angs = [];
+      for (let a = -170; a <= 170; a += 10) angs.push(a);
+      for (let a = -6; a <= 6; a += 1.5) if (a % 10) angs.push(a);
+      angs.forEach(a => {
+        const r = a * Math.PI / 180, dx = Math.sin(r), dy = -Math.cos(r);
+        let len = 300;
+        if (dy < 0) { const t = (OBY + 55 - (EY - 10)) / dy; const x = EX + dx * t; if (x > EX - 30 && x < EX + 30 && t < len) { len = t; hits.push([x, OBY + 55]); } }
+        g += `<line x1="${EX}" y1="${EY - 10}" x2="${EX + dx * len}" y2="${EY - 10 + dy * len}" stroke="#0b8c89" stroke-width="1.6" opacity=".45"/>`;
+      });
+      if (m === 'both') g += car(EX, OBY, 'none', 'stroke-dasharray="8 6" opacity=".8"', '#d33a2c') + `<text x="${EX + 44}" y="${OBY - 30}" font-size="18" fill="#d33a2c" font-weight="800">objekt, který nevidí</text><text x="${EX + 44}" y="${OBY - 8}" font-size="18" fill="#d33a2c" font-weight="800">kamera ani LiDAR</text>`;
+      else g += car(EX, OBY, '#f4d2b1', '', '#a85a12') + `<text x="${EX + 44}" y="${OBY - 20}" font-size="18" fill="#1e2935" font-weight="700">auto vpředu, 17 m</text>`;
+      hits.forEach(([x, y]) => g += m !== 'both' ? `<circle cx="${x}" cy="${y}" r="7" fill="#0b8c89"/>` : `<circle cx="${x}" cy="${y}" r="7" fill="none" stroke="#0b8c89" stroke-width="2" opacity=".6"/>`);
+      if (m === 'ok' || m === 'lidar') g += `<rect x="${EX - 42}" y="${OBY - 67}" width="84" height="134" fill="none" stroke="#b85700" stroke-width="4" stroke-dasharray="10 5"/><text x="${EX - 170}" y="${OBY - 74}" font-size="17" fill="#b85700" font-weight="700">YOLO: auto 0,85</text>`;
+      if (m === 'lidar') {
+        const fx = 330, fy = 80;
+        for (let i = 0; i < 7; i++) g += `<circle cx="${fx - 30 + i * 10}" cy="${fy + (i % 2) * 8}" r="7" fill="#d33a2c"/>`;
+        g += `<rect x="${fx - 46}" y="${fy - 22}" width="92" height="50" rx="8" fill="none" stroke="#d33a2c" stroke-width="3" stroke-dasharray="6 5"/>`;
+        g += `<text x="${fx + 56}" y="${fy - 2}" font-size="18" fill="#d33a2c" font-weight="800">falešná ozvěna</text><text x="${fx + 56}" y="${fy + 20}" font-size="16" fill="#d33a2c">(podvržené pulzy)</text>`;
+        g += `<g transform="translate(720,140)"><rect x="-26" y="-18" width="52" height="36" rx="6" fill="#d33a2c"/><text x="0" y="40" font-size="15" text-anchor="middle" fill="#d33a2c" font-weight="700">útočník</text></g>`;
+        g += `<line x1="694" y1="140" x2="${EX + 10}" y2="${EY - 20}" stroke="#d33a2c" stroke-width="3" stroke-dasharray="4 6"/>`;
+      }
+      if (m === 'cam') {
+        g += `<defs><radialGradient id="glare"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset=".5" stop-color="#fff6c8" stop-opacity=".85"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></radialGradient></defs>`;
+        g += `<circle cx="${EX}" cy="${EY - 90}" r="150" fill="url(#glare)"/>`;
+        g += `<g transform="translate(700,330)"><rect x="-26" y="-18" width="52" height="36" rx="6" fill="#d33a2c"/><text x="0" y="40" font-size="15" text-anchor="middle" fill="#d33a2c" font-weight="700">LED / laser</text></g>`;
+        g += `<line x1="674" y1="335" x2="${EX + 8}" y2="${EY - 44}" stroke="#d33a2c" stroke-width="4"/>`;
+        g += `<text x="${EX - 230}" y="${EY - 110}" font-size="20" fill="#d33a2c" font-weight="800">kamera oslepená</text>`;
+      }
+      g += car(EX, EY + 10, '#d6dee7');
+      g += `<circle cx="${EX}" cy="${EY - 40}" r="8" fill="#f57800" stroke="#fff" stroke-width="3"/><circle cx="${EX}" cy="${EY - 10}" r="9" fill="#0b8c89" stroke="#fff" stroke-width="3"/>`;
+      g += `<text x="${EX + 44}" y="${EY + 4}" font-size="17" fill="#1e2935" font-weight="700">naše auto</text>`;
+      g += `<rect x="20" y="540" width="330" height="38" rx="8" fill="#ffffffe0"/><g font-size="15" font-weight="700"><circle cx="40" cy="560" r="7" fill="#f57800"/><text x="54" y="565" fill="#1e2935">kamera</text><circle cx="140" cy="560" r="7" fill="#0b8c89"/><text x="154" y="565" fill="#1e2935">LiDAR (paprsky, odrazy)</text></g>`;
+      svg.innerHTML = g;
+      const d = M[m];
+      $('#fCam').textContent = d.cam[0]; $('#fCam').className = 'val ' + d.cam[1];
+      $('#fLid').textContent = d.lid[0]; $('#fLid').className = 'val ' + d.lid[1];
+      $('#fFus').textContent = d.fus[0]; $('#fFus').className = 'val ' + d.fus[1];
+      $('#fVerdict').className = 'verdict ' + d.v[0]; $('#fVerdict').textContent = d.v[1];
+      $('#fSrc').textContent = d.src;
+      $$('#modes .btn').forEach(b => { const on = b.dataset.m === m; b.classList.toggle('sel', on); b.classList.toggle('ghost', !on); });
+      cur = m;
+      if (m === 'both') $('#fSum').classList.add('shown');
+    }
+    $$('#modes .btn').forEach(b => b.addEventListener('click', () => render(b.dataset.m)));
+    render('ok');
+    C['fuze'] = { solve() { render('both'); } };
+  })();
+
+  /* --- navigace --- */
+  const slides = $$('.slide');
+  const deck = $('#deck'), vid = $('#vid');
+  let cur = 0;
+  function fit() {
+    const s = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+    deck.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+  function ctrl() { return C[slides[cur].dataset.id] || {}; }
+  function show(i) {
+    const prev = ctrl(); if (prev.leave) prev.leave();
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((el, k) => el.classList.toggle('active', k === cur));
+    $('#progress').style.width = ((cur + 1) / slides.length * 100) + '%';
+    $('#counter').textContent = (cur + 1) + ' / ' + slides.length;
+    $('#navNum').textContent = (cur + 1) + ' / ' + slides.length;
+    $('#navPrev').disabled = cur === 0;
+    $('#navNext').disabled = cur === slides.length - 1;
+    $('#hint').style.display = cur === 0 ? '' : 'none';
+    if (vid) {
+      if (slides[cur].contains(vid)) { try { vid.currentTime = 0; } catch (e) {} const p = vid.play(); if (p && p.catch) p.catch(() => {}); }
+      else vid.pause();
+    }
+    try { history.replaceState(null, '', location.pathname + location.search + '#' + (cur + 1)); } catch (e) {}
+  }
+  const isIx = t => t && t.closest && t.closest('.ix, button, input, select, a, video, label');
+  function blurAll() { const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur(); }
+  function toggleFS() {
+    const d = document, el = d.documentElement;
+    const isFS = d.fullscreenElement || d.webkitFullscreenElement;
+    try {
+      let r;
+      if (!isFS) r = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null);
+      else r = d.exitFullscreen ? d.exitFullscreen() : (d.webkitExitFullscreen ? d.webkitExitFullscreen() : null);
+      if (r && r.catch) r.catch(() => {});
+    } catch (e) {}
+  }
+  const NEXT = ['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Spacebar', 'Right', 'Down'];
+  const PREV = ['ArrowLeft', 'ArrowUp', 'PageUp', 'Left', 'Up'];
+  const NEXT_CODES = [39, 40, 34, 32], PREV_CODES = [37, 38, 33];
+  function onKey(e) {
+    if (e.__deck) return;            // stejná událost na window i document jen jednou
+    e.__deck = true;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key, c = e.keyCode || e.which;
+    const nx = NEXT.indexOf(k) >= 0 || e.code === 'Space' || (NEXT.indexOf(k) < 0 && PREV.indexOf(k) < 0 && NEXT_CODES.indexOf(c) >= 0 && !(k && k.length === 1 && k !== ' '));
+    const pv = !nx && (PREV.indexOf(k) >= 0 || PREV_CODES.indexOf(c) >= 0);
+    if (nx || pv) { e.preventDefault(); e.stopPropagation(); focusPage(); show(cur + (nx ? 1 : -1)); return; }
+    if (k === 'Home') { e.preventDefault(); show(0); }
+    else if (k === 'End') { e.preventDefault(); show(slides.length - 1); }
+    else if (k === 'o' || k === 'O') { e.preventDefault(); const cc = ctrl(); if (cc.solve) cc.solve(); }
+    else if (k === 'f' || k === 'F') { e.preventDefault(); toggleFS(); }
+  }
+  // capture fáze na window i document: šipky listují vždy, i když má fokus posuvník nebo tlačítko
+  window.addEventListener('keydown', onKey, true);
+  document.addEventListener('keydown', onKey, true);
+  // fokus musí být na stránce: body s tabindex=-1
+  document.body.setAttribute('tabindex', '-1');
+  function focusPage() {
+    const a = document.activeElement;
+    if (a && a !== document.body && a.blur) a.blur();
+    try { document.body.focus({ preventScroll: true }); } catch (e) { document.body.focus(); }
+  }
+  // po použití ovladače myší vrátit fokus stránce (posuvník ale až po puštění, aby tažení nepřerušil)
+  document.addEventListener('pointerup', e => { if (isIx(e.target)) setTimeout(focusPage, 0); }, true);
+  document.addEventListener('change', () => setTimeout(focusPage, 0), true);
+  window.addEventListener('focus', () => { if (!document.activeElement || document.activeElement === document.documentElement) focusPage(); });
+  window.addEventListener('load', () => { try { window.focus(); } catch (e) {} focusPage(); });
+  // když má klávesnici adresní řádek nebo jiné okno, upozornit (klik do stránky je bezpečný)
+  const tip = $('#focusTip');
+  function checkFocus() { tip.classList.toggle('on', !document.hasFocus()); }
+  window.addEventListener('blur', () => setTimeout(checkFocus, 50));
+  window.addEventListener('focus', checkFocus);
+  document.addEventListener('pointerdown', () => { try { window.focus(); } catch (e) {} setTimeout(checkFocus, 50); }, true);
+  setInterval(checkFocus, 1000);
+  // klik myší slide nepřepíná – kromě tlačítek ‹ › vpravo dole
+  $('#navPrev').addEventListener('click', e => { e.stopPropagation(); show(cur - 1); setTimeout(focusPage, 0); });
+  $('#navNext').addEventListener('click', e => { e.stopPropagation(); show(cur + 1); setTimeout(focusPage, 0); });
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', () => { const n = parseInt(location.hash.slice(1), 10); if (n && n - 1 !== cur) show(n - 1); });
+
+  function solveAll() { Object.keys(C).forEach(k => C[k].solve && C[k].solve()); }
+  window.addEventListener('beforeprint', solveAll);
+  if (/[?&]tisk/.test(location.search)) { document.documentElement.classList.add('tisk'); solveAll(); }
+
+  fit();
+  show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+  focusPage();
+  window.__deck = { show, C, cur: () => cur };
+})();
+</script>
+</body>
+</html>
